@@ -9,6 +9,9 @@
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm --filter @kmits/backend test",
+    "test:integration": "pnpm --filter @kmits/backend test:integration",
+    "auth:setup": "pnpm --filter @kmits/backend auth:setup",
+    "auth:bootstrap": "pnpm --filter @kmits/backend auth:bootstrap",
     "api:generate": "pnpm --filter @kmits/backend api:generate",
     "api:check": "pnpm --filter @kmits/backend api:check",
     "test:api": "pnpm --filter @kmits/backend test:api"

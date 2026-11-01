@@ -6,7 +6,7 @@ const databaseGlobal = globalThis as typeof globalThis & {
 };
 
 // A shared pool per Node.js process, including development reloads. No connection at import/build time.
-export async function getDatabase() {
+export async function getMongoClient() {
   const uri = process.env.MONGODB_URI?.trim();
   const databaseName = process.env.MONGODB_DATABASE?.trim();
   if (!uri || !databaseName) {
@@ -24,7 +24,11 @@ export async function getDatabase() {
       throw new ApiError(503, "DATABASE_UNAVAILABLE", "MongoDB is unavailable.");
     });
   }
-  return (await databaseGlobal.kmitsMongoConnection).db(databaseName);
+  return await databaseGlobal.kmitsMongoConnection;
+}
+
+export async function getDatabase() {
+  return (await getMongoClient()).db(process.env.MONGODB_DATABASE!.trim());
 }
 
 export async function pingDatabase(): Promise<void> {
