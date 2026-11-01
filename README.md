@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KM ITS website
 
-## Getting Started
+A pnpm workspace with one Next.js application and a separate server-only backend
+package. Both run in the same Next.js process; the backend is not a second server.
 
-First, run the development server:
+## Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```text
+backend/
+  public/              Reserved assets; not automatically served
+  src/
+    modules/           Domain logic, added per feature
+    integrations/      External service adapters
+    lib/               Database, validation, and security helpers
+    index.ts           Server-only package entry
+  tests/
+frontend/
+  public/              Public website assets
+  src/
+    app/               Next.js routes, pages, and layouts
+      api/             Thin HTTP adapters for backend modules
+    components/        UI components
+    lib/               Frontend helpers
+design/
+  assets/              Design references and exports
+docs/
+  archive.md           Archive specification
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create feature-specific files only when implementing those features. The current
+application still displays the original Next.js starter page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup and commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use Node.js 22.13 or newer and the pnpm version declared in the root `package.json`.
+Run these commands from the repository root:
 
-## Learn More
+```sh
+pnpm install
+pnpm dev
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm start
+```
 
-To learn more about Next.js, take a look at the following resources:
+`dev` and `start` run `@kmits/frontend`. `build` checks the backend package and
+builds the frontend. `lint` and `typecheck` check both workspace packages.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open <http://localhost:3000> during development. The starter currently downloads
+Google Fonts at build time, so production builds require access to Google Fonts.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Ownership boundaries
 
-## Deploy on Vercel
+- Put business rules, database access, authentication rules, and synchronization
+  logic in `backend/src`. Export server APIs deliberately from `@kmits/backend`.
+- Put route adapters in `frontend/src/app/api`; they call backend services.
+- Server Components can call backend services directly when appropriate.
+- Client Components must not import the backend package. Its entry imports
+  `server-only` to prevent accidental use from client bundles. Do not bypass the
+  package entry using relative imports into backend source files.
+- Keep Next.js configuration and runtime `.env` files in `frontend/`. Environment
+  files remain ignored by Git. Secrets must never use a `NEXT_PUBLIC_` variable.
+- Website assets belong in `frontend/public`, outside `frontend/src`.
+- The existing `/docs` ignore rule is preserved. `docs/archive.md` is already
+  tracked; other local working documents are not automatically added to Git.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Root configuration coordinates the workspace; application configuration lives
+with the package that owns it. No additional deployment service is introduced.
