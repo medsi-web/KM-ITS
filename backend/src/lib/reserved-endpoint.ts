@@ -1,6 +1,7 @@
 import { endpoints } from "../contracts/endpoints.ts";
 import type { EndpointId } from "../contracts/endpoints.ts";
 import { requireIngestionSecret } from "../integrations/apps-script.ts";
+import { requireAdmin } from "../modules/auth/session.ts";
 import { ApiError, defineHandler, readJsonObject } from "./http.ts";
 
 export function reservedEndpoint(id: EndpointId) {
@@ -10,8 +11,9 @@ export function reservedEndpoint(id: EndpointId) {
       requireIngestionSecret(request);
       await readJsonObject(request);
     }
-    // Admin/session functionality is unavailable, with no development bypass.
-    // Session and role enforcement must precede implementing admin operations.
+    if (endpoint.access === "admin" || endpoint.access === "super-admin") {
+      await requireAdmin(request, endpoint.access === "super-admin" ? "SUPER_ADMIN" : "ADMIN", endpoint.method !== "GET");
+    }
     throw new ApiError(501, "FEATURE_NOT_IMPLEMENTED", `Endpoint ${id} is reserved for development.`);
   });
 }

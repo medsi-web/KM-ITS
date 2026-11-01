@@ -9,6 +9,9 @@ import type { AuthStore } from "../src/modules/auth/store.ts";
 import { completeGoogleLogin, startGoogleLogin } from "../src/modules/auth/oauth.ts";
 import { endSession, issueGoogleSession, requireAdmin } from "../src/modules/auth/session.ts";
 import { csrfForSession, opaqueToken, SESSION_SECONDS, tokenHash } from "../src/modules/auth/security.ts";
+import { createAccount, listAccounts, updateAccount } from "../src/modules/accounts/service.ts";
+import { accountsCreate } from "../src/modules/accounts/handlers.ts";
+import { reservedEndpoint } from "../src/lib/reserved-endpoint.ts";
 
 let replica: MongoMemoryReplSet;
 let store: AuthStore;
@@ -36,6 +39,87 @@ async function ownerFixture() {
   }, session));
   return owner;
 }
+
+async function ownerContext() {
+  const owner = await ownerFixture();
+  const issued = await issueGoogleSession(store, { sub: "owner-google-sub", email: owner.email, emailVerified: true });
+  return requireAdmin(new Request("http://localhost:3000", { headers: { cookie: `kmits_session=${issued.token}` } }));
+}
+
+test("only a super admin can manage invitations, and pending invitations cannot be promoted", async () => {
+  const owner = await ownerContext();
+  const invited = await createAccount(store, owner, { email: "successor@gmail.com", name: "Organization" });
+  assert.equal(invited.role, "ADMIN");
+  assert.equal(invited.linked, false);
+  await assert.rejects(updateAccount(store, owner, invited.id, { role: "SUPER_ADMIN" }), (error: unknown) => error instanceof ApiError && error.code === "SUCCESSOR_NOT_READY");
+  const signedIn = await issueGoogleSession(store, { sub: "successor-sub", email: invited.email, emailVerified: true });
+  const request = new Request("http://localhost:3000/api/admin/accounts", { headers: { cookie: `kmits_session=${signedIn.token}` } });
+  await assert.rejects(requireAdmin(request, "SUPER_ADMIN"), (error: unknown) => error instanceof ApiError && error.status === 403);
+  const admin = await requireAdmin(request);
+  await assert.rejects(createAccount(store, admin, { email: "attacker@gmail.com", name: "Attacker" }), (error: unknown) => error instanceof ApiError && error.status === 403);
+  const listed = await listAccounts(store, new URL("http://localhost?limit=1&offset=0"));
+  assert.equal(listed.items.length, 1);
+  assert.ok(!JSON.stringify(listed).includes("googleSub"));
+  assert.ok(!JSON.stringify(listed).includes("authVersion"));
+});
+
+test("account mutations require CSRF and reject identity/email reassignment", async () => {
+  const owner = await ownerContext();
+  const response = await accountsCreate(new Request("http://localhost:3000/api/admin/accounts", {
+    method: "POST", headers: { cookie: `kmits_session=${owner.token}`, "content-type": "application/json" },
+    body: JSON.stringify({ email: "new@gmail.com", name: "New" }),
+  }));
+  assert.equal(response.status, 403);
+  assert.equal(await store.accounts.countDocuments({ email: "new@gmail.com" }), 0);
+  await assert.rejects(updateAccount(store, owner, owner.account._id, { email: "other@gmail.com" }), (error: unknown) => error instanceof ApiError && error.code === "INVALID_ACCOUNT_INPUT");
+  await assert.rejects(createAccount(store, owner, { email: "new@gmail.com", name: "New", role: "SUPER_ADMIN" }), ApiError);
+});
+
+test("handover requires a linked successor; promotion/deactivation revoke old sessions", async () => {
+  const owner = await ownerContext();
+  await assert.rejects(updateAccount(store, owner, owner.account._id, { active: false }), (error: unknown) => error instanceof ApiError && error.code === "LAST_SUPER_ADMIN");
+  const invitation = await createAccount(store, owner, { email: "organization@gmail.com", name: "Organization" });
+  const initial = await issueGoogleSession(store, { sub: "organization-sub", email: invitation.email, emailVerified: true });
+  await updateAccount(store, owner, invitation.id, { role: "SUPER_ADMIN" });
+  const oldRequest = new Request("http://localhost:3000", { headers: { cookie: `kmits_session=${initial.token}` } });
+  await assert.rejects(requireAdmin(oldRequest), ApiError);
+  const promoted = await issueGoogleSession(store, { sub: "organization-sub", email: invitation.email, emailVerified: true });
+  const successor = await requireAdmin(new Request("http://localhost:3000", { headers: { cookie: `kmits_session=${promoted.token}` } }), "SUPER_ADMIN");
+  await updateAccount(store, successor, owner.account._id, { active: false });
+  assert.equal(await store.sessions.countDocuments({ accountId: owner.account._id }), 0);
+  assert.equal((await store.accounts.findOne({ _id: owner.account._id }))?.active, false);
+  await assert.rejects(issueGoogleSession(store, { sub: "owner-google-sub", email: owner.account.email, emailVerified: true }), (error: unknown) => error instanceof ApiError && error.status === 403);
+  await assert.rejects(createAccount(store, owner, { email: "stale-actor@gmail.com", name: "Stale" }), (error: unknown) => error instanceof ApiError && error.status === 401);
+});
+
+test("concurrent cross-demotions cannot remove both remaining super admins", async () => {
+  const owner = await ownerContext();
+  const invitation = await createAccount(store, owner, { email: "second@gmail.com", name: "Second" });
+  await issueGoogleSession(store, { sub: "second-sub", email: invitation.email, emailVerified: true });
+  await updateAccount(store, owner, invitation.id, { role: "SUPER_ADMIN" });
+  const issued = await issueGoogleSession(store, { sub: "second-sub", email: invitation.email, emailVerified: true });
+  const second = await requireAdmin(new Request("http://localhost:3000", { headers: { cookie: `kmits_session=${issued.token}` } }), "SUPER_ADMIN");
+  const results = await Promise.allSettled([
+    updateAccount(store, owner, invitation.id, { role: "ADMIN" }),
+    updateAccount(store, second, owner.account._id, { role: "ADMIN" }),
+  ]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal(await store.accounts.countDocuments({ active: true, role: "SUPER_ADMIN" }), 1);
+  assert.equal(await store.audit.countDocuments({ action: "account.updated" }), 2); // Initial promotion + one committed demotion.
+});
+
+test("reserved admin features enforce sessions and CSRF before reporting not implemented", async () => {
+  const owner = await ownerContext();
+  const handler = reservedEndpoint("archives.approve");
+  const anonymous = new Request("http://localhost:3000/api/admin/archives/id/approve", { method: "POST" });
+  assert.equal((await handler(anonymous)).status, 401);
+  const withoutCsrf = new Request(anonymous.url, { method: "POST", headers: { cookie: `kmits_session=${owner.token}` } });
+  assert.equal((await handler(withoutCsrf)).status, 403);
+  const valid = new Request(anonymous.url, { method: "POST", headers: {
+    cookie: `kmits_session=${owner.token}`, origin: "http://localhost:3000", "x-csrf-token": csrfForSession(owner.token),
+  } });
+  assert.equal((await handler(valid)).status, 501);
+});
 
 test("OAuth attempts are browser-bound, expire strictly, and can be consumed only once", async () => {
   const provider = {

@@ -120,11 +120,13 @@ test("JSON transport checks media type and enforces actual bytes even without Co
 test("every reserved domain operation fails closed without returning or storing feature data", async () => {
   process.env.APPS_SCRIPT_INGESTION_SECRET = testSecret;
   for (const id of Object.keys(endpoints) as EndpointId[]) {
-    if (id.startsWith("system.")) continue;
+    const endpoint = endpoints[id];
+    if ("implemented" in endpoint && endpoint.implemented) continue;
     const response = await reservedEndpoint(id)(request("{}", { authorization: `Bearer ${testSecret}` }));
     const body = await responseBody(response);
-    assert.equal(response.status, 501, id);
-    assert.equal(body.error.code, "FEATURE_NOT_IMPLEMENTED", id);
+    const protectedRoute = endpoint.access === "admin" || endpoint.access === "super-admin";
+    assert.equal(response.status, protectedRoute ? 401 : 501, id);
+    assert.equal(body.error.code, protectedRoute ? "UNAUTHENTICATED" : "FEATURE_NOT_IMPLEMENTED", id);
     assert.equal(body.success, false, id);
     assert.equal("data" in body, false, id);
   }
