@@ -1,0 +1,1311 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KM ITS API foundation",
+    "version": "0.1.0",
+    "description": "33 operations: two implemented system checks; 31 reserved adapters. Domain request/response contracts remain draft. No Apps Script synchronization or admin authentication is implemented."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Next.js host"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "system.health",
+        "summary": "Check API liveness",
+        "tags": [
+          "System"
+        ],
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Check API liveness",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "operationId": "system.ready",
+        "summary": "Check MongoDB readiness",
+        "tags": [
+          "System"
+        ],
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Check MongoDB readiness",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "MongoDB is not configured or is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "auth.login",
+        "summary": "Start an admin session",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "auth.me",
+        "summary": "Read the current admin session",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "auth.logout",
+        "summary": "End the current admin session",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/accounts": {
+      "get": {
+        "operationId": "accounts.list",
+        "summary": "List admin accounts",
+        "tags": [
+          "Accounts"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "super-admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "accounts.create",
+        "summary": "Create an admin account",
+        "tags": [
+          "Accounts"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "super-admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/accounts/{id}": {
+      "patch": {
+        "operationId": "accounts.update",
+        "summary": "Update an admin account",
+        "tags": [
+          "Accounts"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "super-admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/archives": {
+      "get": {
+        "operationId": "archives.list",
+        "summary": "List visible approved documents",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/archives/{id}": {
+      "get": {
+        "operationId": "archives.detail",
+        "summary": "Read approved document metadata",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/archives/{id}/open": {
+      "get": {
+        "operationId": "archives.open",
+        "summary": "Verify the active PDF and open its Drive source",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/archives": {
+      "get": {
+        "operationId": "archives.adminList",
+        "summary": "List archive records and review state",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/archives/{id}": {
+      "get": {
+        "operationId": "archives.adminDetail",
+        "summary": "Inspect active and pending snapshots",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/archives/{id}/approve": {
+      "post": {
+        "operationId": "archives.approve",
+        "summary": "Approve the specified current candidate",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/archives/{id}/reject": {
+      "post": {
+        "operationId": "archives.reject",
+        "summary": "Reject the specified current candidate",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/archives/{id}/publish": {
+      "post": {
+        "operationId": "archives.publish",
+        "summary": "Restore visibility of an existing approval",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/archives/{id}/unpublish": {
+      "post": {
+        "operationId": "archives.unpublish",
+        "summary": "Manually hide a document",
+        "tags": [
+          "Archive"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/articles": {
+      "get": {
+        "operationId": "articles.list",
+        "summary": "List published articles",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/articles/{id}": {
+      "get": {
+        "operationId": "articles.detail",
+        "summary": "Read a published article",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/articles": {
+      "get": {
+        "operationId": "articles.adminList",
+        "summary": "List submitted articles",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/articles/{id}": {
+      "get": {
+        "operationId": "articles.adminDetail",
+        "summary": "Inspect an article draft",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "articles.update",
+        "summary": "Edit an article draft",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/articles/{id}/publish": {
+      "post": {
+        "operationId": "articles.publish",
+        "summary": "Publish an article",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/articles/{id}/unpublish": {
+      "post": {
+        "operationId": "articles.unpublish",
+        "summary": "Hide an article",
+        "tags": [
+          "Articles"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/events": {
+      "get": {
+        "operationId": "events.list",
+        "summary": "List visible calendar events",
+        "tags": [
+          "Timeline"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{id}": {
+      "get": {
+        "operationId": "events.detail",
+        "summary": "Read a visible event",
+        "tags": [
+          "Timeline"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/admin/events": {
+      "get": {
+        "operationId": "events.adminList",
+        "summary": "List synchronized events",
+        "tags": [
+          "Timeline"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/events/{id}": {
+      "get": {
+        "operationId": "events.adminDetail",
+        "summary": "Inspect event synchronization state",
+        "tags": [
+          "Timeline"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "events.update",
+        "summary": "Update website visibility of a source event",
+        "tags": [
+          "Timeline"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Application record ID. Domain ID validation is not implemented yet."
+          }
+        ]
+      }
+    },
+    "/api/internal/sync/archives": {
+      "post": {
+        "operationId": "sync.archives",
+        "summary": "Receive Drive archive observations",
+        "tags": [
+          "Integration"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "integration",
+        "security": [
+          {
+            "appsScriptBearer": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid JSON or non-object body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid integration credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ingestion secret is missing or shorter than 32 characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Transport-only JSON object, maximum 256 KiB. This is NOT a finalized ingestion schema. Even valid transport returns 501 and is not saved.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "example": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/sync/articles": {
+      "post": {
+        "operationId": "sync.articles",
+        "summary": "Receive Form/Sheet article submissions",
+        "tags": [
+          "Integration"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "integration",
+        "security": [
+          {
+            "appsScriptBearer": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid JSON or non-object body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid integration credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ingestion secret is missing or shorter than 32 characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Transport-only JSON object, maximum 256 KiB. This is NOT a finalized ingestion schema. Even valid transport returns 501 and is not saved.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "example": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/sync/events": {
+      "post": {
+        "operationId": "sync.events",
+        "summary": "Receive Google Calendar changes",
+        "tags": [
+          "Integration"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "integration",
+        "security": [
+          {
+            "appsScriptBearer": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid JSON or non-object body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid integration credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type must be application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ingestion secret is missing or shorter than 32 characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Transport-only JSON object, maximum 256 KiB. This is NOT a finalized ingestion schema. Even valid transport returns 501 and is not saved.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "example": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/sync-logs": {
+      "get": {
+        "operationId": "sync.logs",
+        "summary": "Inspect synchronization outcomes",
+        "tags": [
+          "Integration"
+        ],
+        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "x-implementation-status": "reserved",
+        "x-intended-access": "admin",
+        "security": [],
+        "responses": {
+          "501": {
+            "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "appsScriptBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Server-side APPS_SCRIPT_INGESTION_SECRET, 32+ characters. Configure the Apps Script connector separately; never send this token from public browser code."
+      }
+    },
+    "schemas": {
+      "Success": {
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "data": {
+            "type": "object"
+          },
+          "meta": {
+            "type": "object",
+            "required": [
+              "requestId",
+              "timestamp"
+            ],
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "Failure": {
+        "type": "object",
+        "required": [
+          "success",
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "success": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "required": [
+              "requestId",
+              "timestamp"
+            ],
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

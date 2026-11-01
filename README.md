@@ -9,11 +9,15 @@ package. Both run in the same Next.js process; the backend is not a second serve
 backend/
   public/              Reserved assets; not automatically served
   src/
+    contracts/         API operation inventory
     modules/           Domain logic, added per feature
     integrations/      External service adapters
     lib/               Database, validation, and security helpers
     index.ts           Server-only package entry
   tests/
+  postman/             Collection, local environment, and testing guide
+  scripts/             OpenAPI/Postman generator
+  openapi.json         Current API foundation contract
 frontend/
   public/              Public website assets
   src/
@@ -27,17 +31,23 @@ docs/
   archive.md           Archive specification
 ```
 
-Create feature-specific files only when implementing those features. The current
-application still displays the original Next.js starter page.
+The API foundation provides 33 operation adapters for system checks, admin access,
+Archive, Articles, Timeline, and Apps Script ingestion. Only liveness and MongoDB
+readiness are implemented; domain operations explicitly return `501`. The website
+still displays the original Next.js starter page. See [backend/README.md](backend/README.md)
+for setup, current limitations, and the feature development order.
 
 ## Setup and commands
 
-Use Node.js 22.13 or newer and the pnpm version declared in the root `package.json`.
+Use Node.js 24 or newer and the pnpm version declared in the root `package.json`.
 Run these commands from the repository root:
 
 ```sh
 pnpm install
+cp frontend/.env.example frontend/.env.local
 pnpm dev
+pnpm test
+pnpm api:check
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -46,6 +56,9 @@ pnpm start
 
 `dev` and `start` run `@kmits/frontend`. `build` checks the backend package and
 builds the frontend. `lint` and `typecheck` check both workspace packages.
+`test` runs backend unit/contract checks. With the server running, `pnpm test:api`
+runs the [Postman collection](backend/postman/README.md) locally through Newman.
+`pnpm api:generate` regenerates checked-in OpenAPI/Postman artifacts.
 
 Open <http://localhost:3000> during development. The starter currently downloads
 Google Fonts at build time, so production builds require access to Google Fonts.

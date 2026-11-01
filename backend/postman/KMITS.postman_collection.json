@@ -1,0 +1,988 @@
+{
+  "info": {
+    "name": "KM ITS - Backend Foundation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Foundation smoke tests: 33 operation probes and five integration guard cases. 501 means reserved, not functional success. Import the supplied local environment. Read backend/postman/README.md first."
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"JSON response\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+          "pm.test(\"Response envelope and request metadata\", function () { const body = pm.response.json(); pm.expect(body.success).to.eql(pm.response.code < 400); pm.expect(body.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(body.meta.timestamp).to.be.a(\"string\"); pm.expect(Number.isNaN(Date.parse(body.meta.timestamp))).to.eql(false); pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(body.meta.requestId); if (body.success) { pm.expect(body).to.have.property(\"data\"); } else { pm.expect(body.error.code).to.be.a(\"string\"); pm.expect(body.error.message).to.be.a(\"string\"); pm.expect(body).not.to.have.property(\"data\"); } });",
+          "pm.test(\"No response caching\", function () { pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"); });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "GET /api/health (system.health)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "description": "Check API liveness. Intended access: public. Implemented foundation operation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/ready (system.ready)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/ready",
+            "description": "Check MongoDB readiness. Intended access: public. Implemented foundation operation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(Number(pm.environment.get(\"readyExpectedStatus\") || \"503\")); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/login (auth.login)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Start an admin session. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/auth/me (auth.me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": "Read the current admin session. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/auth/logout (auth.logout)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "End the current admin session. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "GET /api/admin/accounts (accounts.list)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/accounts",
+            "description": "List admin accounts. Intended access: super-admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/accounts (accounts.create)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/accounts",
+            "description": "Create an admin account. Intended access: super-admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/admin/accounts/{id} (accounts.update)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/accounts/{{recordId}}",
+            "description": "Update an admin account. Intended access: super-admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Archive",
+      "item": [
+        {
+          "name": "GET /api/archives (archives.list)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/archives",
+            "description": "List visible approved documents. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/archives/{id} (archives.detail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/archives/{{recordId}}",
+            "description": "Read approved document metadata. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/archives/{id}/open (archives.open)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/archives/{{recordId}}/open",
+            "description": "Verify the active PDF and open its Drive source. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/archives (archives.adminList)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/archives",
+            "description": "List archive records and review state. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/archives/{id} (archives.adminDetail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/archives/{{recordId}}",
+            "description": "Inspect active and pending snapshots. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/archives/{id}/approve (archives.approve)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/approve",
+            "description": "Approve the specified current candidate. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/archives/{id}/reject (archives.reject)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/reject",
+            "description": "Reject the specified current candidate. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/archives/{id}/publish (archives.publish)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/publish",
+            "description": "Restore visibility of an existing approval. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/archives/{id}/unpublish (archives.unpublish)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/unpublish",
+            "description": "Manually hide a document. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Articles",
+      "item": [
+        {
+          "name": "GET /api/articles (articles.list)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/articles",
+            "description": "List published articles. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/articles/{id} (articles.detail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/articles/{{recordId}}",
+            "description": "Read a published article. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/articles (articles.adminList)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/articles",
+            "description": "List submitted articles. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/articles/{id} (articles.adminDetail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/articles/{{recordId}}",
+            "description": "Inspect an article draft. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/admin/articles/{id} (articles.update)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/articles/{{recordId}}",
+            "description": "Edit an article draft. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/articles/{id}/publish (articles.publish)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/articles/{{recordId}}/publish",
+            "description": "Publish an article. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/admin/articles/{id}/unpublish (articles.unpublish)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/articles/{{recordId}}/unpublish",
+            "description": "Hide an article. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Timeline",
+      "item": [
+        {
+          "name": "GET /api/events (events.list)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events",
+            "description": "List visible calendar events. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/events/{id} (events.detail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events/{{recordId}}",
+            "description": "Read a visible event. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/events (events.adminList)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/events",
+            "description": "List synchronized events. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/events/{id} (events.adminDetail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/events/{{recordId}}",
+            "description": "Inspect event synchronization state. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/admin/events/{id} (events.update)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/events/{{recordId}}",
+            "description": "Update website visibility of a source event. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Integration",
+      "item": [
+        {
+          "name": "POST /api/internal/sync/archives (sync.archives)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ingestionSecret}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/internal/sync/archives",
+            "description": "Receive Drive archive observations. Intended access: integration. Reserved: expect 501, no domain processing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status((pm.environment.get(\"integrationConfigured\") === \"true\" ? (pm.environment.get(\"ingestionSecret\") ? 501 : 401) : 503)); });",
+                  "pm.test(\"Integration error code\", function () { const expected = pm.environment.get(\"integrationConfigured\") !== \"true\" ? \"INTEGRATION_NOT_CONFIGURED\" : pm.environment.get(\"ingestionSecret\") ? \"FEATURE_NOT_IMPLEMENTED\" : \"UNAUTHORIZED_INTEGRATION\"; pm.expect(pm.response.json().error.code).to.eql(expected); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/internal/sync/articles (sync.articles)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ingestionSecret}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/internal/sync/articles",
+            "description": "Receive Form/Sheet article submissions. Intended access: integration. Reserved: expect 501, no domain processing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status((pm.environment.get(\"integrationConfigured\") === \"true\" ? (pm.environment.get(\"ingestionSecret\") ? 501 : 401) : 503)); });",
+                  "pm.test(\"Integration error code\", function () { const expected = pm.environment.get(\"integrationConfigured\") !== \"true\" ? \"INTEGRATION_NOT_CONFIGURED\" : pm.environment.get(\"ingestionSecret\") ? \"FEATURE_NOT_IMPLEMENTED\" : \"UNAUTHORIZED_INTEGRATION\"; pm.expect(pm.response.json().error.code).to.eql(expected); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/internal/sync/events (sync.events)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ingestionSecret}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/internal/sync/events",
+            "description": "Receive Google Calendar changes. Intended access: integration. Reserved: expect 501, no domain processing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status((pm.environment.get(\"integrationConfigured\") === \"true\" ? (pm.environment.get(\"ingestionSecret\") ? 501 : 401) : 503)); });",
+                  "pm.test(\"Integration error code\", function () { const expected = pm.environment.get(\"integrationConfigured\") !== \"true\" ? \"INTEGRATION_NOT_CONFIGURED\" : pm.environment.get(\"ingestionSecret\") ? \"FEATURE_NOT_IMPLEMENTED\" : \"UNAUTHORIZED_INTEGRATION\"; pm.expect(pm.response.json().error.code).to.eql(expected); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/sync-logs (sync.logs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/sync-logs",
+            "description": "Inspect synchronization outcomes. Intended access: admin. Reserved: expect 501, no domain processing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
+                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Integration guard cases",
+      "item": [
+        {
+          "name": "Missing credential",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/internal/sync/archives",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "With the server secret unset, all integration requests fail closed with 503. Configure both server and Postman environment to exercise the credential/input guard."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = pm.environment.get(\"integrationConfigured\") === \"true\";",
+                  "const supplied = Boolean(pm.environment.get(\"ingestionSecret\"));",
+                  "const requiresSecret = false ;",
+                  "pm.test(\"Integration guard status\", function () { pm.response.to.have.status(!configured ? 503 : requiresSecret && !supplied ? 401 : 401); });",
+                  "pm.test(\"Integration guard code\", function () { pm.expect(pm.response.json().error.code).to.eql(!configured ? \"INTEGRATION_NOT_CONFIGURED\" : requiresSecret && !supplied ? \"UNAUTHORIZED_INTEGRATION\" : \"UNAUTHORIZED_INTEGRATION\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Incorrect credential",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/internal/sync/archives",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer deliberately-incorrect"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "With the server secret unset, all integration requests fail closed with 503. Configure both server and Postman environment to exercise the credential/input guard."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = pm.environment.get(\"integrationConfigured\") === \"true\";",
+                  "const supplied = Boolean(pm.environment.get(\"ingestionSecret\"));",
+                  "const requiresSecret = false ;",
+                  "pm.test(\"Integration guard status\", function () { pm.response.to.have.status(!configured ? 503 : requiresSecret && !supplied ? 401 : 401); });",
+                  "pm.test(\"Integration guard code\", function () { pm.expect(pm.response.json().error.code).to.eql(!configured ? \"INTEGRATION_NOT_CONFIGURED\" : requiresSecret && !supplied ? \"UNAUTHORIZED_INTEGRATION\" : \"UNAUTHORIZED_INTEGRATION\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Malformed JSON",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/internal/sync/archives",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ingestionSecret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{broken"
+            },
+            "description": "With the server secret unset, all integration requests fail closed with 503. Configure both server and Postman environment to exercise the credential/input guard."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = pm.environment.get(\"integrationConfigured\") === \"true\";",
+                  "const supplied = Boolean(pm.environment.get(\"ingestionSecret\"));",
+                  "const requiresSecret = true ;",
+                  "pm.test(\"Integration guard status\", function () { pm.response.to.have.status(!configured ? 503 : requiresSecret && !supplied ? 401 : 400); });",
+                  "pm.test(\"Integration guard code\", function () { pm.expect(pm.response.json().error.code).to.eql(!configured ? \"INTEGRATION_NOT_CONFIGURED\" : requiresSecret && !supplied ? \"UNAUTHORIZED_INTEGRATION\" : \"INVALID_JSON\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unsupported media type",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/internal/sync/archives",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ingestionSecret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "description": "With the server secret unset, all integration requests fail closed with 503. Configure both server and Postman environment to exercise the credential/input guard."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = pm.environment.get(\"integrationConfigured\") === \"true\";",
+                  "const supplied = Boolean(pm.environment.get(\"ingestionSecret\"));",
+                  "const requiresSecret = true ;",
+                  "pm.test(\"Integration guard status\", function () { pm.response.to.have.status(!configured ? 503 : requiresSecret && !supplied ? 401 : 415); });",
+                  "pm.test(\"Integration guard code\", function () { pm.expect(pm.response.json().error.code).to.eql(!configured ? \"INTEGRATION_NOT_CONFIGURED\" : requiresSecret && !supplied ? \"UNAUTHORIZED_INTEGRATION\" : \"UNSUPPORTED_MEDIA_TYPE\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Non-object JSON",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/internal/sync/archives",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ingestionSecret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[]"
+            },
+            "description": "With the server secret unset, all integration requests fail closed with 503. Configure both server and Postman environment to exercise the credential/input guard."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = pm.environment.get(\"integrationConfigured\") === \"true\";",
+                  "const supplied = Boolean(pm.environment.get(\"ingestionSecret\"));",
+                  "const requiresSecret = true ;",
+                  "pm.test(\"Integration guard status\", function () { pm.response.to.have.status(!configured ? 503 : requiresSecret && !supplied ? 401 : 400); });",
+                  "pm.test(\"Integration guard code\", function () { pm.expect(pm.response.json().error.code).to.eql(!configured ? \"INTEGRATION_NOT_CONFIGURED\" : requiresSecret && !supplied ? \"UNAUTHORIZED_INTEGRATION\" : \"INVALID_BODY\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

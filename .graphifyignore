@@ -7,6 +7,9 @@
 **/.next/
 **/.git/
 graphify-out/
+# Generated API artifacts duplicate the endpoint registry and generator.
+backend/openapi.json
+backend/postman/*.json
 **/coverage/
 **/build/
 **/out/
