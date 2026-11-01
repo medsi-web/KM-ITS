@@ -14,13 +14,14 @@ Copy-Item frontend/.env.example frontend/.env.local
 pnpm dev
 ```
 
-Start your own MongoDB instance at the configured URI, or use an Atlas URI. No
-database server, user, collection, or seed account is provisioned by this kit.
+Start a transaction-capable MongoDB replica set at the configured URI, or use
+Atlas. No database server or live admin account is provisioned automatically.
 Keep credentials only in the ignored `frontend/.env.local`. Restart the app after
 changing environment values. `backend/.env` is not loaded by the HTTP host.
 
 ```powershell
 pnpm test
+pnpm test:integration
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -34,15 +35,18 @@ current HTTP behavior and marks future feature operations as reserved.
 
 ## Scope and response behavior
 
-The contract inventory has **33 HTTP operations on 30 paths**, including two
-implemented system operations:
+The contract inventory has **34 HTTP operations on 31 paths**: nine implemented
+system/auth/account operations and 25 reserved domain/integration operations.
 
 - `GET /api/health`: liveness, `200`, independent of MongoDB.
 - `GET /api/ready`: database ping, `200` if reachable; `503` if missing,
   misconfigured, or unavailable. It does not certify domain feature readiness.
-- Auth, admin accounts, Archive, Articles, Timeline, and sync logs: reserved
-  adapters return `501 FEATURE_NOT_IMPLEMENTED`. They do not authenticate admin
-  sessions, return sample content, or write application data.
+- Google login, 24-hour admin sessions, and account management are implemented.
+  Follow the [authentication setup and handover guide](src/modules/auth/README.md).
+  Google credentials, your initial email, and real Google login remain local setup.
+- Archive, Articles, Timeline, and sync logs remain reserved. Protected operations
+  require an active admin session (and CSRF for mutations) before returning `501`.
+  Anonymous callers receive `401`. Public domain reads still return `501`.
 - Three internal sync adapters: require a configured 32+ character
   `APPS_SCRIPT_INGESTION_SECRET` and `Authorization: Bearer <secret>`. Missing/short
   configuration returns `503`; invalid credentials return `401`. Authenticated
@@ -51,15 +55,15 @@ implemented system operations:
   accepted, queued, synchronized, or saved yet**. `{}` is only a transport probe,
   not a future domain payload contract. Production transport requires HTTPS.
 
-All responses produced by backend handlers use `success`, `data` or `error`, and
+JSON responses produced by backend handlers use `success`, `data` or `error`, and
 `meta: { requestId, timestamp }`, with `X-Request-Id` and `Cache-Control: no-store`.
-Framework-generated errors (for example unknown paths or unsupported methods)
+Google login/callback use `302` redirects with cookies. Framework-generated errors
+(for example unknown paths or unsupported methods)
 may use the default Next.js response instead. The eventual Archive open operation
 will have redirect/404 behavior; its current response is a reserved `501` only.
 
-No authorization bypass or test administrator exists. Before enabling domain
-operations, implement admin sessions, role checks, request-forgery protection,
-credential storage, login throttling, and the first super-admin provisioning flow.
+No authorization bypass or default test administrator exists. Admin sessions,
+role guards, CSRF, login throttling, and one-time provisioning are implemented.
 Shared-secret transport alone does not implement delivery ordering, idempotency,
 replay handling, or per-source authorization; these belong to the ingestion work.
 
@@ -72,7 +76,7 @@ backend/src/
   lib/                    HTTP responses, errors, bounded JSON input, MongoDB pool
   modules/
     system/               Implemented liveness/readiness
-    auth/ accounts/       Reserved admin session/account operations
+    auth/ accounts/       Google login, sessions, role guards, account management
     archives/             Reserved Drive document operations
     articles/             Reserved Form/Sheet content operations
     events/               Reserved Google Calendar operations
@@ -89,7 +93,8 @@ Database/credential errors do not expose raw exception messages or secrets.
 
 ## Development order
 
-1. Authentication and ADMIN/SUPER_ADMIN authorization; first-admin setup.
+1. Authentication and ADMIN/SUPER_ADMIN authorization are implemented; complete
+   local Google/replica-set configuration and bootstrap your own account.
 2. Ingestion envelopes, source allowlists, validation, receipt timestamps,
    delivery identity, ordering, idempotency, audit records, and database indexes.
 3. Archive lifecycle and review concurrency from `docs/archive.md`.

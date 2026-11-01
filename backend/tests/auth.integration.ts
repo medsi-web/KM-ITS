@@ -139,6 +139,13 @@ test("OAuth attempts are browser-bound, expire strictly, and can be consumed onl
   await assert.rejects(completeGoogleLogin(store, new URL(`http://localhost/callback?state=${expiredState}&code=code`), expired.browser, provider), ApiError);
 });
 
+test("login throttling is shared in MongoDB and limits repeated browser attempts", async () => {
+  const browser = opaqueToken();
+  const provider = { authorizationUrl: (state: string) => `https://accounts.google.com/auth?state=${state}`, exchange: async () => ({ sub: "test", email: "test@gmail.com", emailVerified: true }) };
+  for (let attempt = 0; attempt < 10; attempt++) await startGoogleLogin(store, browser, provider);
+  await assert.rejects(startGoogleLogin(store, browser, provider), (error: unknown) => error instanceof ApiError && error.status === 429);
+});
+
 test("session expiry is fixed at 24 hours, tokens are hashed, and logout revokes the session", async () => {
   const owner = await ownerFixture();
   const issued = await issueGoogleSession(store, { sub: "owner-google-sub", email: owner.email, emailVerified: true });

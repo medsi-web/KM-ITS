@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "KM ITS API foundation",
-    "version": "0.1.0",
-    "description": "33 operations: two implemented system checks; 31 reserved adapters. Domain request/response contracts remain draft. No Apps Script synchronization or admin authentication is implemented."
+    "title": "KM ITS API",
+    "version": "0.2.0",
+    "description": "34 operations. System checks, Google admin login, 24-hour MongoDB sessions, and account management are implemented. Archive/Articles/Timeline ingestion and domain operations remain reserved. Admin guards apply even to reserved routes."
   },
   "servers": [
     {
@@ -73,19 +73,116 @@
       }
     },
     "/api/auth/login": {
-      "post": {
+      "get": {
         "operationId": "auth.login",
-        "summary": "Start an admin session",
+        "summary": "Start Google admin login",
         "tags": [
           "Auth"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
-        "x-implementation-status": "reserved",
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
         "x-intended-access": "public",
         "security": [],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "302": {
+            "description": "Redirect to Google authorization; sets a temporary HttpOnly OAuth cookie.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Login attempt limit reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Google login or database not configured/initialized or storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/callback/google": {
+      "get": {
+        "operationId": "auth.callback",
+        "summary": "Complete Google admin login",
+        "tags": [
+          "Auth"
+        ],
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
+        "x-intended-access": "public",
+        "security": [],
+        "responses": {
+          "302": {
+            "description": "Sets the 24-hour admin session cookie and redirects to /api/auth/me.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid/expired/used OAuth state or browser binding.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Google login cancelled or token/code verification failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Google account not allowlisted or active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Google login or database not configured/initialized or storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -104,13 +201,47 @@
         "tags": [
           "Auth"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
-        "x-implementation-status": "reserved",
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "200": {
+            "description": "Read the current admin session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -129,13 +260,47 @@
         "tags": [
           "Auth"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
-        "x-implementation-status": "reserved",
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "200": {
+            "description": "End the current admin session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -144,7 +309,28 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
+          }
+        ]
       }
     },
     "/api/admin/accounts": {
@@ -154,13 +340,57 @@
         "tags": [
           "Accounts"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
-        "x-implementation-status": "reserved",
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
         "x-intended-access": "super-admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "200": {
+            "description": "List admin accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid pagination parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -169,25 +399,169 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          }
+        ]
       },
       "post": {
         "operationId": "accounts.create",
-        "summary": "Create an admin account",
+        "summary": "Create an allowlisted admin invitation",
         "tags": [
           "Accounts"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
-        "x-implementation-status": "reserved",
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
         "x-intended-access": "super-admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "200": {
+            "description": "Create an allowlisted admin invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid account fields, ID, or JSON.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate account, last super admin, or successor not ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Use application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "email",
+                  "name"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
                 }
               }
             }
@@ -198,17 +572,101 @@
     "/api/admin/accounts/{id}": {
       "patch": {
         "operationId": "accounts.update",
-        "summary": "Update an admin account",
+        "summary": "Update admin status, name, or role",
         "tags": [
           "Accounts"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
-        "x-implementation-status": "reserved",
+        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
+        "x-implementation-status": "implemented",
         "x-intended-access": "super-admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "200": {
+            "description": "Update admin status, name, or role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid account fields, ID, or JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Account does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate account, last super admin, or successor not ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Use application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -227,8 +685,56 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
-        ]
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "ADMIN",
+                      "SUPER_ADMIN"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/archives": {
@@ -238,7 +744,7 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -263,7 +769,7 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -299,7 +805,7 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -335,13 +841,47 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -360,13 +900,47 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -396,13 +970,47 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -421,6 +1029,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -432,13 +1059,47 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -457,6 +1118,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -468,13 +1148,47 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -493,6 +1207,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -504,13 +1237,47 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -529,6 +1296,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -540,7 +1326,7 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -565,7 +1351,7 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -601,13 +1387,47 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -626,13 +1446,47 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -660,13 +1514,47 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -685,6 +1573,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -696,13 +1603,47 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -721,6 +1662,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -732,13 +1692,47 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -757,6 +1751,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -768,7 +1781,7 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -793,7 +1806,7 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "public",
         "security": [],
@@ -829,13 +1842,47 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -854,13 +1901,47 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -888,13 +1969,47 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -913,6 +2028,25 @@
               "type": "string"
             },
             "description": "Application record ID. Domain ID validation is not implemented yet."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Must exactly match configured APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -924,7 +2058,7 @@
         "tags": [
           "Integration"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "integration",
         "security": [
@@ -1016,7 +2150,7 @@
         "tags": [
           "Integration"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "integration",
         "security": [
@@ -1108,7 +2242,7 @@
         "tags": [
           "Integration"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "integration",
         "security": [
@@ -1200,13 +2334,47 @@
         "tags": [
           "Integration"
         ],
-        "description": "Reserved foundation adapter, returning 501. Domain schemas and behavior will be implemented separately. Admin/session checks are not implemented; no admin operations are available.",
+        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
         "x-intended-access": "admin",
-        "security": [],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
+          "401": {
+            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role or mutation CSRF/origin check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
             "description": "Reserved operation. No domain data is read or saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authentication storage is unavailable or not initialized.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1221,10 +2389,16 @@
   },
   "components": {
     "securitySchemes": {
+      "adminCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "kmits_session",
+        "description": "Opaque 24-hour website session. HTTPS deployments use __Host-kmits_session instead. Mutations also require Origin and X-CSRF-Token."
+      },
       "appsScriptBearer": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Server-side APPS_SCRIPT_INGESTION_SECRET, 32+ characters. Configure the Apps Script connector separately; never send this token from public browser code."
+        "description": "Server-side APPS_SCRIPT_INGESTION_SECRET, 32+ characters. Independent of admin login. Never send this from public browser code."
       }
     },
     "schemas": {

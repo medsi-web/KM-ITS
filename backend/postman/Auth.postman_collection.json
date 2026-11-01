@@ -1,0 +1,362 @@
+{
+  "info": {
+    "name": "KM ITS - Auth Workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "LOCAL TEST DATA ONLY. Requires an existing SUPER_ADMIN session and a fresh inviteEmail. Creates one invitation, disables it, and logs out your current session. Never run against production. Google browser login is separate; no bypass is provided."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!/^http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?$/.test(pm.environment.get(\"baseUrl\") || \"\")) { throw new Error(\"Auth workflow is limited to localhost test data.\"); }",
+          "if (!pm.environment.get(\"sessionCookie\") || !pm.environment.get(\"inviteEmail\")) { throw new Error(\"Set a local super-admin sessionCookie and a fresh test inviteEmail before running.\"); }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code !== 302) { pm.test(\"JSON response\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); }); }",
+          "if (pm.response.code !== 302) { pm.test(\"Response envelope and request metadata\", function () { const body = pm.response.json(); pm.expect(body.success).to.eql(pm.response.code < 400); pm.expect(body.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(Number.isNaN(Date.parse(body.meta.timestamp))).to.eql(false); pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(body.meta.requestId); if (body.success) { pm.expect(body).to.have.property(\"data\"); } else { pm.expect(body.error.code).to.be.a(\"string\"); pm.expect(body).not.to.have.property(\"data\"); } }); } else { pm.test(\"OAuth redirect\", function () { pm.expect(pm.response.headers.get(\"Location\").startsWith(\"https://accounts.google.com/\")).to.eql(true); pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"HttpOnly\"); }); }",
+          "pm.test(\"No response caching\", function () { pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"); });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Read session and capture CSRF",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/auth/me",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { const data = pm.response.json().data; pm.test(\"Super-admin session\", function () { pm.expect(data.account.role).to.eql(\"SUPER_ADMIN\"); const remaining = Date.parse(data.expiresAt) - Date.now(); pm.expect(remaining).to.be.above(0); pm.expect(remaining).to.be.at.most(86400000); }); pm.environment.set(\"csrfToken\", data.csrfToken); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List accounts",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/accounts?limit=10",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Private credential fields omitted\", function () { const text = pm.response.text(); pm.expect(text).not.to.include(\"googleSub\"); pm.expect(text).not.to.include(\"authVersion\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject mutation without CSRF",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/accounts",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{inviteEmail}}\",\"name\":\"Postman test invitation\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create test invitation",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/accounts",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{inviteEmail}}\",\"name\":\"Postman test invitation\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { const account = pm.response.json().data; pm.environment.set(\"createdAccountId\", account.id); pm.test(\"New account has no elevated access\", function () { pm.expect(account.role).to.eql(\"ADMIN\"); pm.expect(account.linked).to.eql(false); }); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject unlinked successor promotion",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/accounts/{{createdAccountId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"SUPER_ADMIN\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(409); });",
+              "pm.test(\"Successor must login first\", function () { pm.expect(pm.response.json().error.code).to.eql(\"SUCCESSOR_NOT_READY\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Disable test invitation",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/accounts/{{createdAccountId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"active\":false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout current session",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/logout",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Session cookie cleared\", function () { pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"Max-Age=0\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject revoked session",
+      "protocolProfileBehavior": {
+        "disableCookies": true,
+        "followRedirects": false
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/auth/me",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
+import { afterEach, mock, test } from "node:test";
+import { LoginTicket, OAuth2Client } from "google-auth-library";
 import { ApiError } from "../src/lib/http.ts";
-import { googleAuthorizationUrl } from "../src/integrations/google-login.ts";
+import { exchangeGoogleCode, googleAuthorizationUrl } from "../src/integrations/google-login.ts";
 import { normalizedEmail } from "../src/modules/auth/identity.ts";
 import { appOrigin, authCookie, cookieName, csrfForSession, opaqueToken, readCookie, requireCsrf, SESSION_SECONDS, tokenHash } from "../src/modules/auth/security.ts";
 
 const originalEnvironment = { ...process.env };
-afterEach(() => { process.env = { ...originalEnvironment }; });
+afterEach(() => { process.env = { ...originalEnvironment }; mock.restoreAll(); });
 
 test("sessions are exactly 24 hours and production cookies restrict browser access", () => {
   assert.equal(SESSION_SECONDS, 86400);
@@ -67,4 +68,26 @@ test("Google authorization requests use only login scopes and bind state, nonce,
 test("invitation email normalization does not merge plus-tags or dotted addresses", () => {
   assert.equal(normalizedEmail(" Owner.Name+admin@GMAIL.com "), "owner.name+admin@gmail.com");
   assert.throws(() => normalizedEmail("not-an-email"), ApiError);
+});
+
+test("Google code exchange delegates verification to Google's library and rejects wrong nonce/expired/unverified identities", async () => {
+  process.env.APP_ORIGIN = "http://localhost:3000";
+  process.env.GOOGLE_CLIENT_ID = "test-client";
+  process.env.GOOGLE_CLIENT_SECRET = "test-secret";
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { iss: "https://accounts.google.com", aud: "test-client", sub: "google-sub", email: "owner@gmail.com", email_verified: true, iat: now, exp: now + 600, nonce: "expected-nonce" };
+  const exchange = mock.method(OAuth2Client.prototype, "getToken", async () => ({ tokens: { id_token: "test-token" }, res: null }));
+  const verify = mock.method(OAuth2Client.prototype, "verifyIdToken", async () => new LoginTicket(undefined, payload));
+  const identity = await exchangeGoogleCode("code", "verifier", "expected-nonce");
+  assert.equal(identity.sub, "google-sub");
+  assert.deepEqual(exchange.mock.calls[0].arguments[0], { code: "code", codeVerifier: "verifier" });
+  assert.deepEqual(verify.mock.calls[0].arguments[0], { idToken: "test-token", audience: "test-client" });
+  for (const change of [{ nonce: "wrong" }, { exp: now - 1 }, { email_verified: false }]) {
+    const previous = { ...payload };
+    Object.assign(payload, change);
+    await assert.rejects(exchangeGoogleCode("code", "verifier", "expected-nonce"), (error: unknown) => error instanceof ApiError && error.code === "GOOGLE_LOGIN_FAILED");
+    Object.assign(payload, previous);
+  }
+  mock.method(OAuth2Client.prototype, "verifyIdToken", async () => { throw new Error("bad signature"); });
+  await assert.rejects(exchangeGoogleCode("code", "verifier", "expected-nonce"), ApiError);
 });

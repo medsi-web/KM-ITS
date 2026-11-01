@@ -23,7 +23,7 @@ export function appOrigin(): string {
 }
 
 export function cookieName(kind: "session" | "oauth"): string {
-  return `${process.env.APP_ORIGIN?.startsWith("https:") ? "__Host-" : ""}kmits_${kind}`;
+  return `${process.env.APP_ORIGIN?.trim().toLowerCase().startsWith("https:") ? "__Host-" : ""}kmits_${kind}`;
 }
 
 export function readCookie(request: Request, name: string): string | undefined {

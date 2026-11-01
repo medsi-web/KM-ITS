@@ -6,15 +6,18 @@ Import both files into Postman:
 2. `Local.postman_environment.json`
 
 Select **KM ITS - Local Foundation**, start the application with root `pnpm dev`,
-then run the collection. It contains 33 operation probes and five integration
+then run the collection. It contains 34 anonymous operation probes and five integration
 guard cases. The default environment expects no working database and disabled
-ingestion. A passing collection verifies the foundation, not business features.
+ingestion. Cookie jars and redirects are disabled: protected routes must reject
+anonymous access with 401. A passing collection does not prove reserved features work.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `baseUrl` | `http://localhost:3000` | Running Next.js host, with no trailing slash |
 | `recordId` | Example 24-character ID | Placeholder while detail routes are reserved |
 | `readyExpectedStatus` | `503` | Set `200` only when MongoDB is configured and reachable |
+| `loginExpectedStatus` | `503` | Set `302` when Google configuration and auth storage are ready |
+| `callbackExpectedStatus` | `503` | Set `400` when auth is ready; this probe intentionally has no OAuth state |
 | `integrationConfigured` | `false` | Set `true` when the running server has a valid 32+ character ingestion secret |
 | `ingestionSecret` | Empty | Matching server secret; keep it local and never commit exported credentials |
 
@@ -62,9 +65,9 @@ pnpm api:check
 
 Edit `backend/scripts/generate-api-kit.mjs` when feature request schemas, responses,
 or real workflow assertions change. Do not hand-edit generated JSON. Current
-OpenAPI describes foundation responses and marks reserved operations explicitly;
-it does not promise draft domain behavior. Admin access is recorded as intent,
-because a working session protocol has not been implemented yet.
+OpenAPI describes current responses and marks reserved operations explicitly.
+Google login, 24-hour sessions, and account management are implemented. Both
+anonymous and authenticated requests to unfinished domain features are tested.
 
 For each implemented feature, add happy-path and failure-path tests for actual
 behavior (for example stale Archive approvals must fail with `409`). A retained
@@ -72,3 +75,47 @@ behavior (for example stale Archive approvals must fail with `409`). A retained
 
 See [Postman's Newman guide](https://learning.postman.com/docs/collections/using-newman-cli/installing-running-newman)
 for collection execution with an environment.
+
+## Authenticated local workflow
+
+Import `Auth.postman_collection.json` separately. This is an **eight-request,
+state-changing localhost workflow**: it creates a test invitation, checks CSRF
+and promotion restrictions, disables the invitation, and logs out your session.
+Use a local test database. Run requests in order with Stop on error enabled.
+
+1. Complete the [Google/admin setup](../src/modules/auth/README.md), then sign in
+   at `http://localhost:3000/api/auth/login` in a browser. Google password, consent,
+   and multi-factor authentication remain interactive browser steps.
+2. Set `sessionCookie` in Postman's **local** environment to the website cookie
+   header pair, `kmits_session=<value>` for HTTP localhost. Obtain it from your
+   local browser's cookie storage. Do not paste it in chat, commit it, or sync it
+   to a shared/cloud environment. The API does not return raw session tokens.
+3. Set `inviteEmail` to a fresh disposable test invitation email. No mail is sent
+   and no Google account is created. Leave `csrfToken` empty initially.
+4. Run the collection. `/api/auth/me` captures the CSRF token; mutations send it
+   with exact `Origin: {{baseUrl}}`. The final requests log out and prove that the
+   old cookie is rejected. Sign in again afterward for further manual testing.
+
+Automatic cookie handling is disabled; the workflow uses the explicit local
+Cookie header. See [Postman cookie settings](https://learning.postman.com/docs/use/send-requests/response-data/cookies).
+`pnpm test:auth` runs the same workflow through Newman. Use an ignored local
+environment export for credentials rather than command-line arguments containing
+real sessions. The checked-in environment intentionally cannot authenticate.
+
+## Fully isolated HTTP test
+
+```powershell
+pnpm build
+pnpm test:http
+```
+
+The runner creates its own temporary MongoDB replica set and Next.js production
+server, seeds identities through services inside the runner process, executes
+39 anonymous probes plus eight authenticated requests over real HTTP, then stops
+its processes. It does not use your database, call Google, or expose an HTTP
+login bypass. A real Google callback remains a manual check after setup.
+
+`pnpm test:integration` also tests expiry, concurrent bootstrap, stable identity,
+revocation, handover, and concurrent cross-demotions using real MongoDB transactions.
+The first run may download a large MongoDB binary to the local test-library cache.
+`pnpm test` parses every generated Postman script before it reaches a server.

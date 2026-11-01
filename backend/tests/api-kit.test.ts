@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import { Script } from "node:vm";
 import { endpoints } from "../src/contracts/endpoints.ts";
 
 test("every declared method has a real thin Next.js adapter pointing to a backend export", async () => {
@@ -16,6 +17,17 @@ test("every declared method has a real thin Next.js adapter pointing to a backen
   }
 });
 
+test("all generated Postman scripts parse before they reach a live server", async () => {
+  type Item = { name?: string; event?: { script: { exec: string[] } }[]; item?: Item[] };
+  function validate(item: Item) {
+    for (const event of item.event ?? []) assert.doesNotThrow(() => new Script(event.script.exec.join("\n")), item.name);
+    for (const child of item.item ?? []) validate(child);
+  }
+  for (const file of ["KMITS.postman_collection.json", "Auth.postman_collection.json"]) {
+    validate(JSON.parse(await readFile(new URL(`../postman/${file}`, import.meta.url), "utf8")) as Item);
+  }
+});
+
 test("OpenAPI covers the operation inventory and distinguishes readiness from reserved features", async () => {
   const spec = JSON.parse(await readFile(new URL("../openapi.json", import.meta.url), "utf8")) as {
     paths: Record<string, Record<string, { operationId: string; responses: Record<string, unknown>; "x-implementation-status": string }>>;
@@ -24,7 +36,9 @@ test("OpenAPI covers the operation inventory and distinguishes readiness from re
   for (const [id, endpoint] of Object.entries(endpoints)) {
     const operation = spec.paths[endpoint.path][endpoint.method.toLowerCase()];
     assert.equal(operation.operationId, id);
-    assert.equal(operation["x-implementation-status"], id.startsWith("system.") ? "implemented" : "reserved");
-    if (!id.startsWith("system.")) assert.ok(operation.responses["501"]);
+    const implemented = "implemented" in endpoint && endpoint.implemented;
+    assert.equal(operation["x-implementation-status"], implemented ? "implemented" : "reserved");
+    if (!implemented) assert.ok(operation.responses["501"]);
+    if (endpoint.access === "admin" || endpoint.access === "super-admin") assert.ok(operation.responses["401"]);
   }
 });

@@ -10,6 +10,8 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm --filter @kmits/backend test",
     "test:integration": "pnpm --filter @kmits/backend test:integration",
+    "test:http": "pnpm --filter @kmits/backend test:http",
+    "test:auth": "pnpm --filter @kmits/backend test:auth",
     "auth:setup": "pnpm --filter @kmits/backend auth:setup",
     "auth:bootstrap": "pnpm --filter @kmits/backend auth:bootstrap",
     "api:generate": "pnpm --filter @kmits/backend api:generate",

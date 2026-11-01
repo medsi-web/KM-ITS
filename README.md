@@ -31,9 +31,10 @@ docs/
   archive.md           Archive specification
 ```
 
-The API foundation provides 33 operation adapters for system checks, admin access,
-Archive, Articles, Timeline, and Apps Script ingestion. Only liveness and MongoDB
-readiness are implemented; domain operations explicitly return `501`. The website
+The API provides 34 operations for system checks, Google admin access, Archive,
+Articles, Timeline, and Apps Script ingestion. System checks, Google login,
+24-hour sessions, and admin account management are implemented. Domain operations
+return `501` after required access checks. The website
 still displays the original Next.js starter page. See [backend/README.md](backend/README.md)
 for setup, current limitations, and the feature development order.
 
@@ -47,6 +48,7 @@ pnpm install
 cp frontend/.env.example frontend/.env.local
 pnpm dev
 pnpm test
+pnpm test:integration
 pnpm api:check
 pnpm lint
 pnpm typecheck
@@ -58,6 +60,9 @@ pnpm start
 builds the frontend. `lint` and `typecheck` check both workspace packages.
 `test` runs backend unit/contract checks. With the server running, `pnpm test:api`
 runs the [Postman collection](backend/postman/README.md) locally through Newman.
+After building, `pnpm test:http` runs an isolated HTTP/Postman auth workflow with
+a temporary MongoDB replica set. For your own account, follow the
+[Google authentication setup](backend/src/modules/auth/README.md).
 `pnpm api:generate` regenerates checked-in OpenAPI/Postman artifacts.
 
 Open <http://localhost:3000> during development. The starter currently downloads

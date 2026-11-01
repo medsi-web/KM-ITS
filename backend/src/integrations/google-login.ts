@@ -15,7 +15,10 @@ export function googleLoginConfig() {
 
 function client() {
   const config = googleLoginConfig();
-  return new OAuth2Client({ clientId: config.clientId, clientSecret: config.clientSecret, redirectUri: config.redirectUri });
+  return new OAuth2Client({
+    clientId: config.clientId, clientSecret: config.clientSecret, redirectUri: config.redirectUri,
+    transporterOptions: { timeout: 10000, retry: false },
+  });
 }
 
 export function googleAuthorizationUrl(state: string, verifier: string, nonce: string): string {
@@ -36,8 +39,9 @@ export async function exchangeGoogleCode(code: string, verifier: string, nonce: 
     if (!tokens.id_token) throw new Error();
     // Google's library verifies signature, issuer, audience, and expiry.
     const ticket = await oauth.verifyIdToken({ idToken: tokens.id_token, audience: config.clientId });
-    const payload = ticket.getPayload() as (ReturnType<typeof ticket.getPayload> & { nonce?: string });
+    const payload = ticket.getPayload();
     if (!payload?.sub || !payload.email || payload.email_verified !== true ||
+        payload.exp <= Math.floor(Date.now() / 1000) ||
         typeof payload.nonce !== "string" || !sameSecret(payload.nonce, nonce)) throw new Error();
     // Do not store or expose any Google token. Website sessions are separate.
     return { sub: payload.sub, email: payload.email, emailVerified: true, hostedDomain: payload.hd };

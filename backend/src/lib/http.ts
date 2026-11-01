@@ -26,6 +26,9 @@ type Action = (request: Request) => Promise<unknown> | unknown;
 
 export function defineHandler(operation: string, action: Action) {
   return async function handle(request: Request): Promise<Response> {
+    // Access request-time data outside the error boundary so Next.js can
+    // propagate its prerender control flow instead of logging a false 500.
+    void request.headers.get("host");
     const requestId = randomUUID();
     try {
       const result = await action(request);

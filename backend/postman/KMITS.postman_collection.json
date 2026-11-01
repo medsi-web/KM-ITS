@@ -2,7 +2,7 @@
   "info": {
     "name": "KM ITS - Backend Foundation",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Foundation smoke tests: 33 operation probes and five integration guard cases. 501 means reserved, not functional success. Import the supplied local environment. Read backend/postman/README.md first."
+    "description": "34 anonymous operation probes and five integration guard cases. Cookie jars and redirects are disabled. Use the separate Auth Workflow collection for authenticated tests. 501 means reserved. Read backend/postman/README.md."
   },
   "event": [
     {
@@ -10,8 +10,8 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "pm.test(\"JSON response\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
-          "pm.test(\"Response envelope and request metadata\", function () { const body = pm.response.json(); pm.expect(body.success).to.eql(pm.response.code < 400); pm.expect(body.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(body.meta.timestamp).to.be.a(\"string\"); pm.expect(Number.isNaN(Date.parse(body.meta.timestamp))).to.eql(false); pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(body.meta.requestId); if (body.success) { pm.expect(body).to.have.property(\"data\"); } else { pm.expect(body.error.code).to.be.a(\"string\"); pm.expect(body.error.message).to.be.a(\"string\"); pm.expect(body).not.to.have.property(\"data\"); } });",
+          "if (pm.response.code !== 302) { pm.test(\"JSON response\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); }); }",
+          "if (pm.response.code !== 302) { pm.test(\"Response envelope and request metadata\", function () { const body = pm.response.json(); pm.expect(body.success).to.eql(pm.response.code < 400); pm.expect(body.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(Number.isNaN(Date.parse(body.meta.timestamp))).to.eql(false); pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(body.meta.requestId); if (body.success) { pm.expect(body).to.have.property(\"data\"); } else { pm.expect(body.error.code).to.be.a(\"string\"); pm.expect(body).not.to.have.property(\"data\"); } }); } else { pm.test(\"OAuth redirect\", function () { pm.expect(pm.response.headers.get(\"Location\").startsWith(\"https://accounts.google.com/\")).to.eql(true); pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"HttpOnly\"); }); }",
           "pm.test(\"No response caching\", function () { pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"); });"
         ]
       }
@@ -28,6 +28,10 @@
             "header": [],
             "url": "{{baseUrl}}/api/health",
             "description": "Check API liveness. Intended access: public. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -49,6 +53,10 @@
             "url": "{{baseUrl}}/api/ready",
             "description": "Check MongoDB readiness. Intended access: public. Implemented foundation operation."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
@@ -67,12 +75,16 @@
       "name": "Auth",
       "item": [
         {
-          "name": "POST /api/auth/login (auth.login)",
+          "name": "GET /api/auth/login (auth.login)",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Start an admin session. Intended access: public. Reserved: expect 501, no domain processing."
+            "description": "Start Google admin login. Intended access: public. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -80,8 +92,31 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(Number(pm.environment.get(\"loginExpectedStatus\") || \"503\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/auth/callback/google (auth.callback)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/callback/google",
+            "description": "Complete Google admin login. Intended access: public. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(Number(pm.environment.get(\"callbackExpectedStatus\") || \"503\")); });"
                 ]
               }
             }
@@ -93,7 +128,11 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/auth/me",
-            "description": "Read the current admin session. Intended access: admin. Reserved: expect 501, no domain processing."
+            "description": "Read the current admin session. Intended access: admin. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -101,8 +140,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -114,7 +153,11 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/auth/logout",
-            "description": "End the current admin session. Intended access: admin. Reserved: expect 501, no domain processing."
+            "description": "End the current admin session. Intended access: admin. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -122,8 +165,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -140,7 +183,11 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/admin/accounts",
-            "description": "List admin accounts. Intended access: super-admin. Reserved: expect 501, no domain processing."
+            "description": "List admin accounts. Intended access: super-admin. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -148,8 +195,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -161,7 +208,11 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/admin/accounts",
-            "description": "Create an admin account. Intended access: super-admin. Reserved: expect 501, no domain processing."
+            "description": "Create an allowlisted admin invitation. Intended access: super-admin. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -169,8 +220,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -182,7 +233,11 @@
             "method": "PATCH",
             "header": [],
             "url": "{{baseUrl}}/api/admin/accounts/{{recordId}}",
-            "description": "Update an admin account. Intended access: super-admin. Reserved: expect 501, no domain processing."
+            "description": "Update admin status, name, or role. Intended access: super-admin. Implemented foundation operation."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -190,8 +245,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -209,6 +264,10 @@
             "header": [],
             "url": "{{baseUrl}}/api/archives",
             "description": "List visible approved documents. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -231,6 +290,10 @@
             "url": "{{baseUrl}}/api/archives/{{recordId}}",
             "description": "Read approved document metadata. Intended access: public. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
@@ -251,6 +314,10 @@
             "header": [],
             "url": "{{baseUrl}}/api/archives/{{recordId}}/open",
             "description": "Verify the active PDF and open its Drive source. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -273,14 +340,18 @@
             "url": "{{baseUrl}}/api/admin/archives",
             "description": "List archive records and review state. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -294,14 +365,18 @@
             "url": "{{baseUrl}}/api/admin/archives/{{recordId}}",
             "description": "Inspect active and pending snapshots. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -315,14 +390,18 @@
             "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/approve",
             "description": "Approve the specified current candidate. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -336,14 +415,18 @@
             "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/reject",
             "description": "Reject the specified current candidate. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -357,14 +440,18 @@
             "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/publish",
             "description": "Restore visibility of an existing approval. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -378,14 +465,18 @@
             "url": "{{baseUrl}}/api/admin/archives/{{recordId}}/unpublish",
             "description": "Manually hide a document. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -403,6 +494,10 @@
             "header": [],
             "url": "{{baseUrl}}/api/articles",
             "description": "List published articles. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -425,6 +520,10 @@
             "url": "{{baseUrl}}/api/articles/{{recordId}}",
             "description": "Read a published article. Intended access: public. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
@@ -446,14 +545,18 @@
             "url": "{{baseUrl}}/api/admin/articles",
             "description": "List submitted articles. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -467,14 +570,18 @@
             "url": "{{baseUrl}}/api/admin/articles/{{recordId}}",
             "description": "Inspect an article draft. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -488,14 +595,18 @@
             "url": "{{baseUrl}}/api/admin/articles/{{recordId}}",
             "description": "Edit an article draft. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -509,14 +620,18 @@
             "url": "{{baseUrl}}/api/admin/articles/{{recordId}}/publish",
             "description": "Publish an article. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -530,14 +645,18 @@
             "url": "{{baseUrl}}/api/admin/articles/{{recordId}}/unpublish",
             "description": "Hide an article. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -555,6 +674,10 @@
             "header": [],
             "url": "{{baseUrl}}/api/events",
             "description": "List visible calendar events. Intended access: public. Reserved: expect 501, no domain processing."
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -577,6 +700,10 @@
             "url": "{{baseUrl}}/api/events/{{recordId}}",
             "description": "Read a visible event. Intended access: public. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
@@ -598,14 +725,18 @@
             "url": "{{baseUrl}}/api/admin/events",
             "description": "List synchronized events. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -619,14 +750,18 @@
             "url": "{{baseUrl}}/api/admin/events/{{recordId}}",
             "description": "Inspect event synchronization state. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -640,14 +775,18 @@
             "url": "{{baseUrl}}/api/admin/events/{{recordId}}",
             "description": "Update website visibility of a source event. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -683,6 +822,10 @@
                 }
               }
             }
+          },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
           },
           "event": [
             {
@@ -723,6 +866,10 @@
               }
             }
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
@@ -762,6 +909,10 @@
               }
             }
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
@@ -783,14 +934,18 @@
             "url": "{{baseUrl}}/api/admin/sync-logs",
             "description": "Inspect synchronization outcomes. Intended access: admin. Reserved: expect 501, no domain processing."
           },
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(501); });",
-                  "pm.test(\"Reserved operation is explicit\", function () { pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"); });"
+                  "pm.test(\"Expected foundation status\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Anonymous access is denied\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"); });"
                 ]
               }
             }
@@ -803,6 +958,10 @@
       "item": [
         {
           "name": "Missing credential",
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/internal/sync/archives",
@@ -836,6 +995,10 @@
         },
         {
           "name": "Incorrect credential",
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/internal/sync/archives",
@@ -873,6 +1036,10 @@
         },
         {
           "name": "Malformed JSON",
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/internal/sync/archives",
@@ -910,6 +1077,10 @@
         },
         {
           "name": "Unsupported media type",
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/internal/sync/archives",
@@ -947,6 +1118,10 @@
         },
         {
           "name": "Non-object JSON",
+          "protocolProfileBehavior": {
+            "followRedirects": false,
+            "disableCookies": true
+          },
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/internal/sync/archives",
