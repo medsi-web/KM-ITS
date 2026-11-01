@@ -28,7 +28,13 @@ export function defineHandler(operation: string, action: Action) {
   return async function handle(request: Request): Promise<Response> {
     const requestId = randomUUID();
     try {
-      return jsonResponse(requestId, 200, { data: await action(request) });
+      const result = await action(request);
+      if (result instanceof Response) {
+        result.headers.set("Cache-Control", "no-store");
+        result.headers.set("X-Request-Id", requestId);
+        return result;
+      }
+      return jsonResponse(requestId, 200, { data: result });
     } catch (error) {
       if (error instanceof ApiError) {
         return jsonResponse(requestId, error.status, {

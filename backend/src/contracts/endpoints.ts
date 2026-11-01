@@ -11,9 +11,10 @@ type Endpoint = {
 export const endpoints = {
   "system.health": { method: "GET", path: "/api/health", group: "System", access: "public", summary: "Check API liveness", implemented: true },
   "system.ready": { method: "GET", path: "/api/ready", group: "System", access: "public", summary: "Check MongoDB readiness", implemented: true },
-  "auth.login": { method: "POST", path: "/api/auth/login", group: "Auth", access: "public", summary: "Start an admin session" },
-  "auth.me": { method: "GET", path: "/api/auth/me", group: "Auth", access: "admin", summary: "Read the current admin session" },
-  "auth.logout": { method: "POST", path: "/api/auth/logout", group: "Auth", access: "admin", summary: "End the current admin session" },
+  "auth.login": { method: "GET", path: "/api/auth/login", group: "Auth", access: "public", summary: "Start Google admin login", implemented: true },
+  "auth.callback": { method: "GET", path: "/api/auth/callback/google", group: "Auth", access: "public", summary: "Complete Google admin login", implemented: true },
+  "auth.me": { method: "GET", path: "/api/auth/me", group: "Auth", access: "admin", summary: "Read the current admin session", implemented: true },
+  "auth.logout": { method: "POST", path: "/api/auth/logout", group: "Auth", access: "admin", summary: "End the current admin session", implemented: true },
   "accounts.list": { method: "GET", path: "/api/admin/accounts", group: "Accounts", access: "super-admin", summary: "List admin accounts" },
   "accounts.create": { method: "POST", path: "/api/admin/accounts", group: "Accounts", access: "super-admin", summary: "Create an admin account" },
   "accounts.update": { method: "PATCH", path: "/api/admin/accounts/{id}", group: "Accounts", access: "super-admin", summary: "Update an admin account" },
