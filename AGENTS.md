@@ -15,3 +15,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Client Components must never import `@kmits/backend` or reach its files through relative paths.
 - `design/` holds design source assets; `docs/` holds project specifications.
 - Use root `pnpm dev`, `pnpm build`, `pnpm lint`, and `pnpm typecheck` commands.
+
+## Local knowledge graph
+
+- For architecture and dependency questions, use `graphify-out/graph.json` first when it exists and matches current sources. Follow the graphify skill for queries and updates.
+- Graphify results and caches are local and ignored by Git. `.graphifyignore` includes local `docs/` references while excluding dependencies, build output, secrets, and binary assets.
+- The graph must distinguish implemented code from planned behavior in specifications. Refresh affected extractions after source or specification changes; do not treat a stale graph as current evidence.
+- Graphify is an optional development tool, not an application dependency or a required build step.
+- For Graphify 0.9.48 detection, register `.mmd` in `graphify.detect.DOC_EXTENSIONS` for the current Python process so the local Mermaid reference files are indexed as documents too.

@@ -1,0 +1,26 @@
+# Include local project specifications even though /docs is ignored by Git.
+!docs/
+!docs/**
+
+# Dependencies, generated output, credentials, and binary/reference assets.
+**/node_modules/
+**/.next/
+**/.git/
+graphify-out/
+**/coverage/
+**/build/
+**/out/
+**/*.tsbuildinfo
+**/next-env.d.ts
+**/.env*
+**/*.pem
+**/*.key
+**/pnpm-lock.yaml
+**/*.svg
+**/*.ico
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.webp
+**/*.woff
+**/*.woff2

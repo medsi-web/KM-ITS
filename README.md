@@ -67,3 +67,29 @@ Google Fonts at build time, so production builds require access to Google Fonts.
 
 Root configuration coordinates the workspace; application configuration lives
 with the package that owns it. No additional deployment service is introduced.
+
+## Local knowledge graph
+
+Graphify indexes source relationships and project specifications for navigation.
+Generated artifacts and extraction caches stay in `graphify-out/`, ignored by Git:
+
+- `graph.json`: queryable graph with source evidence and relationship confidence.
+- `graph.html`: interactive graph visualization.
+- `GRAPH_REPORT.md`: communities, important nodes, and graph diagnostics.
+
+With the graphify CLI installed in your Python environment, query from the repo root:
+
+```sh
+graphify query "Where are backend ownership and Archive approval defined?"
+```
+
+Use the graphify skill to create or refresh the graph after source/specification
+changes, including semantic extraction of changed documents. `.graphifyignore`
+deliberately re-includes local `docs/` files without changing their Git tracking.
+The graph contains private local working references, so keep its outputs local.
+Planned Archive behavior must remain distinguishable from implemented code.
+
+The initial graph uses Graphify 0.9.48. For a full refresh with that version,
+register `.mmd` in `graphify.detect.DOC_EXTENSIONS` before detection so Mermaid
+reference files are included as documents. Do not rename the source diagrams.
+Keep generated artifacts under `graphify-out/`; no graph output is committed.
