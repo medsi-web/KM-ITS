@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tokens from the Figma moodboard (BEM-Mitra > Moodboard). */
+/* Tokens from the Figma moodboard (BEM > Moodboard). */
 @theme static {
   --color-navy: #243f81;
   --color-azure: #127bbe;
