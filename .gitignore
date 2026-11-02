@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Local knowledge graph, extraction cache, and reports
 /graphify-out/
+
+.claude/
+.mcp.json
