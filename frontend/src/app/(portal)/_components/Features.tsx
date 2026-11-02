@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import Frame from "./Frame";
-import { inset, px, rect, Tilted } from "./geometry";
+import { inset, px, rect, Tilted } from "@/app/_components/geometry";
 
 const centered = (size: number, weight: number): CSSProperties => ({
   margin: 0,

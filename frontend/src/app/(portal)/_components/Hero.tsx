@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Frame from "./Frame";
-import { inset, px, rect } from "./geometry";
+import { inset, px, rect } from "@/app/_components/geometry";
 
 /** Batik key-graphic tiles on the right panel, in Figma % insets (top right bottom left). */
 const batik = [

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { rect } from "./geometry";
+import { rect } from "@/app/_components/geometry";
 
 /** A design frame plus its navy footer band. Children are positioned in frame % units. */
 export default function Frame({

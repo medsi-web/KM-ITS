@@ -1,15 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { inset, px } from "./geometry";
+import NavLinks from "./NavLinks";
+import "./navbar.css";
 
 const NAV_W = 932.51;
 const NAV_H = 38.337;
-
-const links = [
-  { label: "Knowledge", href: "#", box: inset(32.43, 23.44, 29.73, 70.44) },
-  { label: "Timeline", href: "#", box: inset(32.43, 17.22, 29.73, 78.11) },
-  { label: "News", href: "#", box: inset(32.43, 12.67, 29.73, 84.33) },
-];
 
 export default function Navbar() {
   return (
@@ -35,18 +31,7 @@ export default function Navbar() {
             Portal KM ITS
           </Link>
 
-          <nav aria-label="Utama">
-            {links.map((l) => (
-              <Link
-                key={l.label}
-                href={l.href}
-                className="nb-link"
-                style={{ ...l.box, fontSize: px(10.36) }}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
+          <NavLinks />
 
           <Link
             href="#"
