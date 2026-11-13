@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Work_Sans } from "next/font/google";
 import "./globals.css";
+import Footer from "./_components/Footer";
 
 const workSans = Work_Sans({
   variable: "--font-work-sans",
@@ -15,9 +16,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="id" className={`${workSans.variable} h-full antialiased`}>
+    <html
+      lang="id"
+      data-scroll-behavior="smooth"
+      className={`${workSans.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">
         {children}
+        <Footer />
       </body>
     </html>
   );

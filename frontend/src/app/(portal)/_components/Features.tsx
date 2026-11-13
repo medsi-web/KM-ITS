@@ -1,8 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import Frame from "./Frame";
-import { inset, px, rect, Tilted } from "@/app/_components/geometry";
+import { Layer } from "./Canvas";
+import {
+  FEATURES_H,
+  HERO_H,
+  inset,
+  px,
+  rectIn,
+  Tilted,
+} from "@/app/_components/geometry";
+
+const rect = rectIn(FEATURES_H);
 
 const centered = (size: number, weight: number): CSSProperties => ({
   margin: 0,
@@ -70,13 +79,13 @@ function Badge({
 
 export default function Features() {
   return (
-    <Frame id="fitur" label="Pilihan fitur">
+    <Layer id="features" top={HERO_H} height={FEATURES_H}>
       {/* Batik band behind the cards */}
-      <div className="pf-abs" style={inset(41.3, 37.34, 28.21, 37.43)}>
+      <div className="pf-abs" style={inset(43.88, 37.32, 23.73, 37.44)}>
         <Image src="/portal/batik-filled-1.svg" alt="" fill sizes="30vw" />
       </div>
       <Tilted
-        box={inset(41.49, 11.12, 25.56, 62.73)}
+        box={inset(44.09, 11.09, 20.9, 62.75)}
         angle={3.21}
         width={[96.3264, 7.62586]}
         height={[-3.67356, 92.3741]}
@@ -84,7 +93,7 @@ export default function Features() {
         <Image src="/portal/batik-filled-2.svg" alt="" fill sizes="30vw" />
       </Tilted>
       <Tilted
-        box={inset(43.98, -14.05, 23.07, 87.9)}
+        box={inset(46.73, -14.09, 18.26, 87.93)}
         angle={3.21}
         width={[96.3264, 7.62586]}
         height={[-3.67356, 92.3741]}
@@ -92,7 +101,7 @@ export default function Features() {
         <Image src="/portal/batik-filled-3.svg" alt="" fill sizes="30vw" />
       </Tilted>
       <Tilted
-        box={inset(41.3, 62.66, 25.75, 11.19)}
+        box={inset(43.88, 62.65, 21.11, 11.19)}
         angle={-3.21}
         flipX
         width={[-96.3264, 7.62586]}
@@ -101,7 +110,7 @@ export default function Features() {
         <Image src="/portal/batik-filled-4.svg" alt="" fill sizes="30vw" />
       </Tilted>
       <Tilted
-        box={inset(43.79, 87.83, 23.26, -13.98)}
+        box={inset(46.52, 87.83, 18.46, -13.99)}
         angle={-3.21}
         flipX
         width={[-96.3264, 7.62586]}
@@ -139,7 +148,7 @@ export default function Features() {
 
       {/* Card 1: Knowledge */}
       <Tilted
-        box={inset(33.95, 59.67, 32.8, 23.98)}
+        box={inset(36.07, 59.65, 28.6, 23.99)}
         angle={-4.74}
         width={[91.1453, -6.59852]}
         height={[8.85467, 93.4015]}
@@ -161,7 +170,7 @@ export default function Features() {
         rotation={-5.99}
       />
       <Tilted
-        box={inset(44.55, 63.77, 49.21, 27.32)}
+        box={inset(47.34, 63.75, 46.03, 27.33)}
         angle={-4.76}
         width={[97.3965, -20.5994]}
         height={[2.60346, 79.4006]}
@@ -169,7 +178,7 @@ export default function Features() {
         <p style={centered(12.433, 600)}>KM ITS Knowledge</p>
       </Tilted>
       <Tilted
-        box={inset(52.39, 63.96, 42.41, 28.18)}
+        box={inset(55.67, 63.94, 38.8, 28.19)}
         angle={-4.51}
         width={[97.6733, -20.6733]}
         height={[2.32673, 79.3267]}
@@ -178,7 +187,7 @@ export default function Features() {
       </Tilted>
 
       {/* Card 2: Timeline */}
-      <div className="pf-abs" style={inset(33.84, 42.51, 34.99, 42.54)}>
+      <div className="pf-abs" style={inset(35.96, 42.49, 30.93, 42.55)}>
         <Link
           href="#"
           aria-label="Integrated Timeline KM ITS"
@@ -198,7 +207,7 @@ export default function Features() {
       <p
         className="pf-abs"
         style={{
-          ...inset(43.02, 45.69, 52.01, 45.6),
+          ...inset(45.71, 45.67, 49.01, 45.62),
           margin: 0,
           textAlign: "center",
           color: "#fff",
@@ -214,7 +223,7 @@ export default function Features() {
       <p
         className="pf-abs"
         style={{
-          ...inset(53.35, 45.04, 42.45, 45.06),
+          ...inset(56.68, 45.02, 38.85, 45.08),
           margin: 0,
           textAlign: "center",
           color: "#fff",
@@ -227,7 +236,7 @@ export default function Features() {
 
       {/* Card 3: News */}
       <Tilted
-        box={inset(34.23, 23.91, 32.52, 59.74)}
+        box={inset(36.37, 23.88, 28.3, 59.77)}
         angle={4.74}
         flipX
         width={[-91.1453, -6.59852]}
@@ -250,7 +259,7 @@ export default function Features() {
         rotation={7.9}
       />
       <Tilted
-        box={inset(45.51, 27.32, 50.74, 63.89)}
+        box={inset(48.35, 27.29, 47.66, 63.91)}
         angle={4.76}
         width={[98.6871, 34.2563]}
         height={[-1.31292, 65.7437]}
@@ -258,7 +267,7 @@ export default function Features() {
         <p style={centered(12.433, 600)}>KM ITS News</p>
       </Tilted>
       <Tilted
-        box={inset(51.24, 28.19, 43.32, 63.03)}
+        box={inset(54.45, 28.16, 39.77, 63.05)}
         angle={4.67}
         width={[97.8075, 22.9261]}
         height={[-2.1925, 77.0739]}
@@ -275,7 +284,7 @@ export default function Features() {
       <p
         className="pf-abs"
         style={{
-          ...inset(73.23, 43.1, 24.09, 43.13),
+          ...inset(77.81, 43.08, 19.34, 43.14),
           margin: 0,
           textAlign: "right",
           color: "#fff",
@@ -286,6 +295,6 @@ export default function Features() {
       >
         Pilih 1 untuk memulai
       </p>
-    </Frame>
+    </Layer>
   );
 }

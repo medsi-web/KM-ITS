@@ -29,6 +29,13 @@
   initial-value: 0px;
 }
 
+/* In-page anchors (e.g. #features) scroll smoothly unless the user opts out. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #2c2c30;

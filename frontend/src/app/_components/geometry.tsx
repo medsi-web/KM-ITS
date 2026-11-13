@@ -1,8 +1,12 @@
 import type { CSSProperties, ReactNode } from "react";
 
-/** Size of the "Homepage" / "Feature-option" frames in Figma. */
+/** Size of the "Homepage Full Page" frame in Figma, without its footer band. */
 export const FRAME_W = 963.3637;
-export const FRAME_H = 541.8921;
+export const FRAME_H = 1010;
+
+/** Heights of the stacked bands inside that frame. */
+export const HERO_H = 500;
+export const FEATURES_H = 510;
 
 /** Position a box given in Figma px as percentages of its parent frame. */
 export function rect(
@@ -20,6 +24,11 @@ export function rect(
     height: `${(height / h) * 100}%`,
   };
 }
+
+/** `rect` for a band that is `h` Figma px tall instead of the whole frame. */
+export const rectIn =
+  (h: number) => (left: number, top: number, width: number, height: number) =>
+    rect(left, top, width, height, FRAME_W, h);
 
 /** Same order as CSS `inset`: top, right, bottom, left (all in %). */
 export function inset(

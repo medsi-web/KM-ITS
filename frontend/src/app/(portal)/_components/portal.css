@@ -1,4 +1,4 @@
-/* One Figma frame (963.364 x 541.892), scaled to the page width. */
+/* The homepage frame (963.364 x 1010), scaled to the page width. */
 .pf-stage {
   container-type: inline-size;
   width: 100%;
@@ -8,21 +8,21 @@
   --u: calc(100cqw / 963.3637);
   position: relative;
   width: 100%;
-  aspect-ratio: 963.3637 / 541.8921;
+  aspect-ratio: 963.3637 / 1010;
   overflow: hidden;
   background: #fff;
+}
+
+.pf-layer {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .pf-abs {
   position: absolute;
   line-height: normal;
-}
-
-/* Navy footer band; Figma keeps it 64px tall and lets the frame clip it. */
-.pf-footer {
-  position: absolute;
-  background: var(--color-navy);
-  border-radius: calc(var(--u) * 10.035);
 }
 
 .pf-button {

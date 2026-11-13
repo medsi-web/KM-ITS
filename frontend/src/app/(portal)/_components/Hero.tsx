@@ -1,21 +1,23 @@
 import Image from "next/image";
 import Link from "next/link";
-import Frame from "./Frame";
-import { inset, px, rect } from "@/app/_components/geometry";
+import { Layer } from "./Canvas";
+import { HERO_H, inset, px, rect as rectOf, rectIn } from "@/app/_components/geometry";
+
+const rect = rectIn(HERO_H);
 
 /** Batik key-graphic tiles on the right panel, in Figma % insets (top right bottom left). */
 const batik = [
-  inset(-7.07, -2.93, 69.25, 77.76),
-  inset(-7.07, 22.13, 69.25, 52.7),
-  inset(30.59, 22.13, 31.59, 52.71),
-  inset(30.59, -2.93, 31.59, 77.76),
-  inset(68.26, 22.13, -6.08, 52.7),
-  inset(68.26, -2.93, -6.08, 77.76),
+  inset(-7.67, -2.97, 66.68, 77.79),
+  inset(-7.67, 22.1, 66.68, 52.72),
+  inset(33.16, 22.1, 25.86, 52.73),
+  inset(33.16, -2.97, 25.86, 77.79),
+  inset(73.98, 22.1, -14.97, 52.72),
+  inset(73.98, -2.97, -14.97, 77.79),
 ];
 
 export default function Hero() {
   return (
-    <Frame id="beranda" label="Beranda">
+    <Layer top={0} height={HERO_H}>
       {/* Building illustration */}
       <div className="pf-abs" style={rect(-274.59, 81.93, 746, 417)}>
         <Image
@@ -84,6 +86,16 @@ export default function Hero() {
         <Image src="/portal/emblem-its.svg" alt="Lambang ITS" fill />
       </div>
 
+      {/* Fades the hero into the white page below */}
+      <div
+        className="pf-abs"
+        style={{
+          ...rect(0, 410, 963.3637, 91),
+          backgroundImage:
+            "linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff)",
+        }}
+      />
+
       {/* Copy */}
       <p
         className="pf-abs"
@@ -101,7 +113,7 @@ export default function Hero() {
         className="pf-heading"
         style={{
           left: `${(118.1 / 963.3637) * 100}%`,
-          top: `${(167.9 / 541.8921) * 100}%`,
+          top: `${(167.9 / HERO_H) * 100}%`,
           fontSize: px(33.156),
           color: "#000",
           whiteSpace: "nowrap",
@@ -117,7 +129,7 @@ export default function Hero() {
         className="pf-abs"
         style={{
           left: `${(118.1 / 963.3637) * 100}%`,
-          top: `${(291.2 / 541.8921) * 100}%`,
+          top: `${(291.2 / HERO_H) * 100}%`,
           fontSize: px(12.433),
           color: "var(--color-ink)",
           whiteSpace: "nowrap",
@@ -129,7 +141,7 @@ export default function Hero() {
       </p>
 
       <Link
-        href="#fitur"
+        href="#features"
         className="pf-button"
         style={{
           ...rect(117.05, 329.47, 112.937, 30.048),
@@ -141,11 +153,18 @@ export default function Hero() {
         Mulai Telusuri
         <span
           className="pf-abs"
-          style={rect(216.18 - 117.05, 342.6 - 329.47, 3.689, 5.913, 112.937, 30.048)}
+          style={rectOf(
+            216.18 - 117.05,
+            342.6 - 329.47,
+            3.689,
+            5.913,
+            112.937,
+            30.048,
+          )}
         >
           <Image src="/portal/icon-chevron.svg" alt="" fill />
         </span>
       </Link>
-    </Frame>
+    </Layer>
   );
 }
