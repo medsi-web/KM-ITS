@@ -17,10 +17,11 @@
     "auth:bootstrap": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs --bootstrap",
     "api:generate": "node scripts/generate-api-kit.mjs",
     "api:check": "node scripts/generate-api-kit.mjs --check",
-    "test:api": "newman run postman/KMITS.postman_collection.json -e postman/Local.postman_environment.json --timeout-request 10000 --reporter-cli-no-assertions"
+    "test:api": "newman run postman/KMITS.postman_collection.json -e postman/Local.postman_environment.json --timeout-request 10000 --reporter-cli-no-assertions",
+    "auth:migrate": "node --env-file-if-exists=../frontend/.env.local scripts/migrate-auth.mjs"
   },
   "dependencies": {
-    "google-auth-library": "^11.3.2",
+    "@node-rs/argon2": "^2.2.2",
     "mongodb": "^7.0.0",
     "server-only": "0.0.1"
   },

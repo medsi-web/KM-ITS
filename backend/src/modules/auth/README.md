@@ -1,143 +1,23 @@
-# Google admin access
+# Admin authentication
 
-Approved settings: Google login, **fixed 24-hour sessions**, and an explicit admin
-allowlist. The project owner supplies the first super-admin email privately and
-can later transfer control to an organization account. No local passwords,
-public signup, default administrator, or HTTP test-login bypass exists.
+Admin authentication uses local, case-insensitive usernames and Argon2id password hashes. Usernames contain 3-64 ASCII letters, numbers, dots, underscores or hyphens and start with a letter or number. Passwords contain 12-128 characters and at most 512 UTF-8 bytes. Argon2id uses 19 MiB memory, two iterations and one lane. Plain passwords and session tokens never enter the database or audit log.
 
-## Setup
+Set APP_ORIGIN to the exact website origin. Run `pnpm --filter @kmits/backend auth:setup` against a MongoDB replica set. For a fresh database set BOOTSTRAP_SUPER_ADMIN_USERNAME and BOOTSTRAP_SUPER_ADMIN_PASSWORD privately and run `pnpm --filter @kmits/backend auth:bootstrap`. There are no default credentials. Remove bootstrap credentials from the environment after provisioning. Bootstrap is serialized and refuses a nonempty account store.
 
-1. Configure Atlas or a local MongoDB **replica set**. Transactions are required
-   for provisioning, identity binding, session issuance, and account mutations.
-   A standalone server may pass `/api/ready` but cannot perform those operations.
-2. Copy `frontend/.env.example` to `frontend/.env.local` if you have not already
-   created it. Never overwrite an existing local environment file blindly.
-3. Set `MONGODB_URI`, `MONGODB_DATABASE`, and `APP_ORIGIN`. Local example:
-   `APP_ORIGIN=http://localhost:3000`. Remote deployments require HTTPS. The origin
-   contains no path or query. Restart the app after configuration changes.
-4. Create a Google OAuth client of type **Web application** in a project controlled
-   by BEM ITS. Configure its consent/audience settings and test users if applicable.
-   Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` locally. Register the exact
-   callback: `http://localhost:3000/api/auth/callback/google` for that local origin,
-   and the corresponding HTTPS callback for production. Ports and hosts matter;
-   `localhost` and `127.0.0.1` are different origins.
-5. Set `BOOTSTRAP_SUPER_ADMIN_EMAIL` to your own Google email locally, then run
-   `pnpm auth:bootstrap` from the repository root. It creates indexes, a control
-   record, and one unlinked SUPER_ADMIN invitation. It does not log anyone in.
-   Bootstrap is one-time and cannot add later super admins or replace the owner.
-   Remove the bootstrap email from local env afterward. `pnpm auth:setup` safely
-   prepares/rechecks indexes without creating an account.
-6. Run `pnpm dev`, then open `/api/auth/login` **in a browser**. After successful
-   authorization, the backend redirects to `/api/auth/me` until an admin UI exists.
-   The returned data includes the account, expiry, and session-bound `csrfToken`.
+POST /api/auth/login accepts `{username,password}` with Content-Type application/json and the exact Origin header. Unknown usernames, incorrect passwords and temporary lockout all return the same 401 error. Shared MongoDB limits allow 10 attempts per normalized username, 20 per browser cookie and 120 globally in a ten-minute window. Windows expire independently of delayed TTL cleanup. Browser-cookie removal cannot bypass the username and global limits. The browser cookie is set on failed attempts too.
 
-No actual Google credentials, admin emails, or live database were provisioned by
-the implementation. Setup commands read `frontend/.env.local`; they do not create
-or rewrite that file. OS environment variables take precedence. MongoDB server
-setup and Google Console setup remain operator tasks.
+GET /api/auth/me returns the current account, fixed session expiry and CSRF token. POST /api/auth/logout and POST /api/auth/password require the exact Origin and X-CSRF-Token. Password change accepts `{oldPassword,newPassword}`, revokes every session and clears the cookie; the user must log in again. Session cookies last 24 hours, use HttpOnly and SameSite=Lax, and use Secure and the __Host- prefix on HTTPS. Only token hashes are persisted. Each login rotates the presented session.
 
-## Identity and permissions
+A super admin creates an account using `{username,name,role?}`. The default role is ADMIN. Creation returns `{account,temporaryPassword}`. POST /api/admin/accounts/{id}/reset-password resets another account and returns the same shape. The cryptographically random password appears only in that response and cannot be retrieved later. Both operations require CSRF. Sessions using a temporary password can access only me, password and logout; all regular server guards and transaction actor checks reject them. A newly created SUPER_ADMIN cannot manage anything until changing its temporary password. Promotion and removal of the last super admin require an active successor with a permanent password.
 
-- ADMIN can access the future content-management workflows. Their business logic
-  is still reserved and returns `501` after access checks.
-- SUPER_ADMIN additionally lists, creates, and updates accounts.
-- `POST /api/admin/accounts` accepts only `{ "email": "...", "name": "..." }`.
-  It creates an active **ADMIN invitation**, not a Google account or an email.
-  No invitation mail is sent.
-- `PATCH /api/admin/accounts/{id}` accepts any nonempty subset of `name`, `active`,
-  and `role` (`ADMIN` or `SUPER_ADMIN`). IDs are UUIDs. Email and Google identity
-  cannot be reassigned through this endpoint.
-- `GET /api/admin/accounts?limit=50&offset=0` supports limit 1–100 and offset
-  0–10000. Account responses omit Google subjects and internal session versions.
-- Initial linking requires a verified Google-authoritative Gmail or Workspace
-  email matching an invitation. Names do not authorize access. Google accounts
-  using other email providers need a separate identity-verification policy and
-  currently cannot link automatically. Do not assume every ITS address is hosted
-  by Google; verify the actual account.
-- Once linked, `(Google, sub)` identifies the account. A changed Google email does
-  not reassign it or automatically update its invited email. A different subject
-  cannot claim an already-linked invitation even with the same email string.
+The shared access transaction fence serializes login issuance, password change, reset, role change and deactivation. Password verification happens before the transaction, then the exact hash and authVersion are checked under the fence. This prevents an old password verified concurrently with a reset from issuing a usable session after the reset. All access changes revoke existing sessions.
 
-## Session and request rules
+## Migrating an existing installation
 
-The website requests only `openid email profile`. Google code exchange and ID
-token verification use Google's Node.js library, with PKCE, nonce, state, issuer,
-audience, and expiry checks. The app does not persist Google access/refresh tokens
-or obtain Drive/Calendar permissions from admin login. Apps Script bearer secrets
-are independent and never grant website admin access.
+Legacy accounts and legacy sessions fail closed. Setup refuses obsolete identity indexes or unmigrated records; it never drops data. Do not run old and new application versions together. Stop all application instances and take a verified database backup before migration. Retain that backup for rollback; restoring it requires reverting the application version and rotating/revoking all old sessions before reopening access.
 
-The cookie is `kmits_session` for HTTP localhost and `__Host-kmits_session` for
-HTTPS. It is HttpOnly, SameSite=Lax, Path=/, without Domain; HTTPS adds Secure.
-Its value is random and opaque; MongoDB stores only its SHA-256 hash. Expiry is
-24 hours after issuance and is checked on every request, independently of MongoDB
-TTL cleanup. Reading a session does not extend it. Logging in again rotates the
-current browser session; other device sessions remain until expiry/revocation.
+Create a private JSON file outside source control mapping every existing account ID exactly once, for example `[{"id":"existing-uuid","username":"chosen.username","password":"a privately chosen strong password"}]`. Choose and verify usernames with the account owners. Do not derive them automatically from email addresses. Every unmigrated account needs a password meeting the policy. Already migrated rows may omit password; a retry with the same mapping never replaces an existing credential. Distribute initial passwords through a private channel and remove the mapping file securely after successful verification.
 
-Every authenticated mutation requires the cookie plus:
+With application instances stopped, run from backend: `node --env-file-if-exists=../frontend/.env.local scripts/migrate-auth.mjs --mapping=<private-file> --confirm-index-migration`. The command validates complete ID coverage and unique normalized usernames, creates the username index, migrates credentials and revokes sessions in one transaction. IDs, roles, names, creation history and audit records remain intact. Legacy identity fields remain stored for operator history but are never accepted or exposed by authentication APIs. All migrated accounts must change their temporary password before admin access.
 
-```http
-Origin: http://localhost:3000
-X-CSRF-Token: <csrfToken from GET /api/auth/me>
-Content-Type: application/json
-```
-
-Origin must exactly match APP_ORIGIN. Logout ends the current website session;
-it does not sign the user out of Google. Status or role changes revoke **all**
-sessions for the affected account. A caller changing their own access must log
-in again afterward. Disabled users cannot create new sessions.
-
-OAuth attempts last ten minutes, require the initiating browser's temporary
-cookie, and are consumed once. A failed exchange requires a fresh attempt.
-Login is limited to 10 starts per browser and 120 starts globally per ten-minute
-window in MongoDB. Proxy-supplied IP headers are not trusted. Configure additional
-edge rate limiting if deployment traffic needs it. Never log OAuth callback query
-strings, cookies, authorization headers, or Google tokens in proxy/access logs.
-
-Transactions write a shared revision document before checking permissions and
-applying account/session changes. This serializes security mutations and prevents
-two concurrent demotions from deleting every super admin. Session versions prevent
-access through stale sessions. Audit entries record bootstrap, identity linking,
-successful login/logout, account creation, and account changes without tokens.
-Set an operational retention/backup policy for audit history before deployment.
-
-## Cabinet handover
-
-1. The outgoing super admin invites the organization's selected Google email.
-2. The organization signs in as ADMIN, completing identity binding.
-3. The outgoing super admin promotes that linked active account to SUPER_ADMIN.
-   Promotion revokes its existing sessions, so the organization signs in again.
-4. Verify the organization can list/manage accounts using its new session.
-5. The organization demotes or disables the outgoing account, revoking its sessions.
-   Removing the final active, linked super admin returns `409 LAST_SUPER_ADMIN`.
-6. Transfer OAuth project management, database/server access, deployment secrets,
-   backups, and this guide through an appropriate private handover process.
-
-A website role does not transfer ownership of the Google Cloud project, source
-Drive folders, or server. Account recovery when all authorized Google identities
-are inaccessible requires an operator-reviewed database recovery procedure; there
-is no public reset endpoint or automatic bootstrap reset.
-
-## Tests
-
-```powershell
-pnpm test
-pnpm test:integration
-pnpm build
-pnpm test:http
-```
-
-Integration tests create and stop their own temporary MongoDB replica set. The
-first run downloads a MongoDB binary to the test library's cache (it can be large
-on Windows); no repository database is reused or deleted. Package postinstall
-downloads are disabled; the explicit test command performs the runtime download.
-
-`test:http` starts a temporary Next.js production server from the preceding build,
-seeds isolated identities through backend services in its own process, then runs
-the anonymous and authenticated Postman collections over real HTTP. No fixture
-credential or test route is exposed by the application. This proves application
-session/role behavior, not a live Google consent flow. Verify Google login in a
-browser after configuring your actual client.
-
-References: [Google OIDC](https://developers.google.com/identity/openid-connect/openid-connect),
-[Google OAuth web setup](https://developers.google.com/identity/protocols/oauth2/web-server),
-[MongoDB transactions](https://www.mongodb.com/docs/drivers/node/current/crud/transactions/).
+The explicit confirmation permits removing only obsolete unique email/googleSub indexes after credential migration. No collection or account is dropped. DDL follows the transaction; if interrupted, rerun the identical mapping to finish indexes safely. The script adds one audit entry per migrated account and a schema audit entry once. Existing OAuth-attempt collections are inert and left untouched. Verify migration success and sign in as a super admin, change its password, then sign in again before reopening the application. Remove obsolete OAuth configuration from the deployment environment. Do not roll back to OAuth with the migrated database; use the verified backup under maintenance instead.
