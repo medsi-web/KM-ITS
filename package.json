@@ -14,14 +14,13 @@
     "test:auth": "pnpm --filter @kmits/backend test:auth",
     "auth:setup": "pnpm --filter @kmits/backend auth:setup",
     "auth:bootstrap": "pnpm --filter @kmits/backend auth:bootstrap",
+    "auth:migrate": "pnpm --filter @kmits/backend auth:migrate",
+    "archives:setup": "pnpm --filter @kmits/backend archives:setup",
+    "test:archives": "pnpm --filter @kmits/backend test:archives",
     "api:generate": "pnpm --filter @kmits/backend api:generate",
     "api:check": "pnpm --filter @kmits/backend api:check",
-    "test:api": "pnpm --filter @kmits/backend test:api",
-    "auth:migrate": "pnpm --filter @kmits/backend auth:migrate",
-    "archives:setup": "pnpm --filter @kmits/backend archives:setup"
+    "test:api": "pnpm --filter @kmits/backend test:api"
   },
-  "engines": {
-    "node": ">=24.0.0"
-  },
+  "engines": { "node": ">=24.0.0" },
   "packageManager": "pnpm@12.11.2"
 }

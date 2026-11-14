@@ -1,121 +1,138 @@
-# KM ITS backend foundation
+# KM ITS backend
 
-This workspace owns server logic. The runnable HTTP host is the existing Next.js
-app in `frontend/`. It is one application, not a second backend server.
+This server-only workspace owns domain logic and persistence. The existing
+Next.js application in `frontend/` is its single HTTP host. Frontend pages remain
+untouched; the API implementation adds no admin or Archive UI.
 
-## Local development
+## Implemented scope
 
-Requires Node.js 24+ and the pnpm version declared in the root package manifest.
-Run these from the repository root:
+The inventory contains **33 HTTP operations: 19 implemented and 14 reserved**.
+
+- System liveness and MongoDB readiness.
+- Local username/password login, session inspection, logout and password change.
+- Super-admin account listing, creation, changes and temporary password reset.
+- Archive ingestion, admin list/detail, manual hide/unhide and sync-log reading.
+- Public Archive list/detail and verified PDF open redirects.
+
+Articles and Timeline domain operations, plus article/event ingestion, remain
+`501` after applicable authentication, CSRF and transport checks. No Apps Script
+connector is implemented. Readiness checks database connectivity; it does not
+certify authentication indexes, registered sources or Google permissions.
+
+## Local setup
+
+Use Node.js 24+ and the root manifest's pnpm version. Configure a transaction-capable
+MongoDB replica set or Atlas. Keep server credentials in ignored
+`frontend/.env.local`; the HTTP host does not load `backend/.env`.
 
 ```powershell
 pnpm install
 Copy-Item frontend/.env.example frontend/.env.local
+```
+
+Set `MONGODB_URI`, `MONGODB_DATABASE`, and the exact `APP_ORIGIN`. For a fresh
+installation, privately set `BOOTSTRAP_SUPER_ADMIN_USERNAME` and
+`BOOTSTRAP_SUPER_ADMIN_PASSWORD`, then run:
+
+```powershell
+pnpm auth:setup
+pnpm auth:bootstrap
+pnpm archives:setup
 pnpm dev
 ```
 
-Start a transaction-capable MongoDB replica set at the configured URI, or use
-Atlas. No database server or live admin account is provisioned automatically.
-Keep credentials only in the ignored `frontend/.env.local`. Restart the app after
-changing environment values. `backend/.env` is not loaded by the HTTP host.
+Remove bootstrap credentials after provisioning. There is no default account or
+authorization bypass. For existing installations, follow the full
+[authentication and migration guide](src/modules/auth/README.md) before invoking
+`pnpm auth:migrate` with its mapping and explicit migration confirmation. Stop
+application instances and retain a verified backup as that guide describes.
+Restart the host after environment changes.
+
+## Authentication
+
+Admins use case-insensitive local usernames and Argon2id password hashes. Sessions
+expire after 24 hours, use HttpOnly cookies, and store only token hashes. Login
+requires the configured Origin; authenticated mutations additionally require the
+session's `X-CSRF-Token`. Login attempts are throttled in shared MongoDB storage.
+
+Super admins manage accounts. Creation and reset return a temporary password
+once. Temporary-password sessions can access only session information, password
+change and logout. Changing a password revokes sessions and requires a new login.
+Role changes, deactivation and resets also revoke sessions. Transaction-time actor
+checks protect mutations against concurrent access revocation. Audit records
+exclude passwords and session tokens.
+
+## Archive ingestion and visibility
+
+Register source mappings through `ARCHIVE_SOURCE_CONFIG` as
+`[{"streamId":"ministry-one","ministryId":"ministry-one","folderId":"DRIVE_FOLDER_ID"}]`.
+Run `pnpm archives:setup` to create Archive indexes and validate configuration.
+Archive requests fail closed with `503` until setup records the schema as ready
+after creating the required uniqueness and ordering indexes.
+Keep stream identities and scan-sequence namespaces stable across connector
+restarts. Configure a random `APPS_SCRIPT_INGESTION_SECRET` of at least 32
+characters; internal ingestion uses `Authorization: Bearer <secret>`.
+
+Archive ingestion validates the source registration, delivery identity, sequence,
+metadata and PDF observations. It tracks duplicates, stale deliveries, source
+health and synchronization history. The metadata file identifies one mutable
+Archive record; its PDF reference identifies the document. Valid source updates
+are automatically published unless manually hidden. No approval queue or
+approve/reject operation is part of Archive behavior.
+
+Manual hiding persists across source updates. Unhiding changes only the manual
+flag and never repairs an invalid or unavailable source. Admin list/detail expose
+source suppression separately from manual visibility; detail includes the latest
+sync log. Committed hide/unhide attempts record actor and before/after state.
+Records are retained rather than hard deleted. Source loss or invalidity suppresses
+public visibility until a valid observation restores it.
+
+Public list/detail return sanitized metadata and an application open URL only for
+currently visible records. List pagination supports `limit` and `offset`; search
+and grouping are not implemented. Opening a document verifies its current PDF
+through Drive, then redirects to the Drive viewer. Hidden or unavailable records
+return `404`; temporary verification failures may return `503`.
+
+## Drive configuration
+
+Enable Drive API in the Google project. Configure
+`DRIVE_SERVICE_ACCOUNT_EMAIL` and `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY` for an
+isolated identity shared only into registered folders as Viewer. Configure
+`DRIVE_PUBLIC_API_KEY` for anonymous PDF-readability checks; an API key does not
+grant file access. Restrict the key to Drive API and deployment server addresses
+where possible. Keep all these values server-only and follow the environment
+example for private-key formatting. Live Drive access and permissions require
+operator setup; no Google resource is created automatically.
+
+## Responses and commands
+
+JSON handlers return `success`, `data` or `error`, and
+`meta: { requestId, timestamp }`, with `X-Request-Id` and `Cache-Control: no-store`.
+Archive open success returns a `302` redirect. Unknown paths and unsupported
+methods may use framework-generated responses. Internal JSON transport accepts
+bounded objects up to 256 KiB and rejects invalid credentials or malformed input
+before invoking domain ingestion. Use HTTPS in production.
+
+These commands are available from the repository root; this document does not
+claim that they or live setup have been run:
 
 ```powershell
 pnpm test
 pnpm test:integration
+pnpm test:archives
 pnpm lint
 pnpm typecheck
 pnpm build
+pnpm api:generate
+pnpm api:check
 ```
 
-Import the collection and local environment from [postman/](postman/README.md).
-`pnpm test:api` runs it against a running server. `pnpm api:check` verifies the
-generated Postman/OpenAPI files match the operation inventory; regenerate them
-with `pnpm api:generate`. [openapi.json](openapi.json) describes the foundation's
-current HTTP behavior and marks future feature operations as reserved.
+[openapi.json](openapi.json) and the [Postman kit](postman/README.md) describe the
+HTTP contract. `pnpm test:api` targets a running server. `pnpm test:http` runs the
+isolated HTTP authentication workflow after a build.
 
-## Scope and response behavior
-
-The contract inventory has **34 HTTP operations on 31 paths**: nine implemented
-system/auth/account operations and 25 reserved domain/integration operations.
-
-- `GET /api/health`: liveness, `200`, independent of MongoDB.
-- `GET /api/ready`: database ping, `200` if reachable; `503` if missing,
-  misconfigured, or unavailable. It does not certify domain feature readiness.
-- Google login, 24-hour admin sessions, and account management are implemented.
-  Follow the [authentication setup and handover guide](src/modules/auth/README.md).
-  Google credentials, your initial email, and real Google login remain local setup.
-- Archive, Articles, Timeline, and sync logs remain reserved. Protected operations
-  require an active admin session (and CSRF for mutations) before returning `501`.
-  Anonymous callers receive `401`. Public domain reads still return `501`.
-- Three internal sync adapters: require a configured 32+ character
-  `APPS_SCRIPT_INGESTION_SECRET` and `Authorization: Bearer <secret>`. Missing/short
-  configuration returns `503`; invalid credentials return `401`. Authenticated
-  requests must contain a JSON object no larger than 256 KiB. Malformed transport
-  returns `400`, `413`, or `415`. Valid transport still returns `501`: **nothing is
-  accepted, queued, synchronized, or saved yet**. `{}` is only a transport probe,
-  not a future domain payload contract. Production transport requires HTTPS.
-
-JSON responses produced by backend handlers use `success`, `data` or `error`, and
-`meta: { requestId, timestamp }`, with `X-Request-Id` and `Cache-Control: no-store`.
-Google login/callback use `302` redirects with cookies. Framework-generated errors
-(for example unknown paths or unsupported methods)
-may use the default Next.js response instead. The eventual Archive open operation
-will have redirect/404 behavior; its current response is a reserved `501` only.
-
-No authorization bypass or default test administrator exists. Admin sessions,
-role guards, CSRF, login throttling, and one-time provisioning are implemented.
-Shared-secret transport alone does not implement delivery ordering, idempotency,
-replay handling, or per-source authorization; these belong to the ingestion work.
-
-## Ownership
-
-```text
-backend/src/
-  contracts/endpoints.ts   Operation inventory and current access intentions
-  integrations/           Apps Script transport authentication
-  lib/                    HTTP responses, errors, bounded JSON input, MongoDB pool
-  modules/
-    system/               Implemented liveness/readiness
-    auth/ accounts/       Google login, sessions, role guards, account management
-    archives/             Reserved Drive document operations
-    articles/             Reserved Form/Sheet content operations
-    events/               Reserved Google Calendar operations
-    sync/                 Reserved source ingestion and synchronization logs
-backend/tests/            Native Node.js tests
-frontend/src/app/api/     Thin route adapters; no domain logic
-```
-
-Only server code may import `@kmits/backend`; its entry point uses `server-only`.
-Domain modules can grow services, repositories, schemas, and tests when their
-behavior is implemented. Avoid empty abstractions or provider layers in advance.
-The MongoDB client connects lazily and reuses a process-level connection pool.
-Database/credential errors do not expose raw exception messages or secrets.
-
-## Development order
-
-1. Authentication and ADMIN/SUPER_ADMIN authorization are implemented; complete
-   local Google/replica-set configuration and bootstrap your own account.
-2. Ingestion envelopes, source allowlists, validation, receipt timestamps,
-   delivery identity, ordering, idempotency, audit records, and database indexes.
-3. Archive lifecycle and review concurrency from `docs/archive.md`.
-4. Article ingestion, editing, publishing, and public reads.
-5. Calendar synchronization, visibility, time-derived lifecycle, public reads.
-6. Apps Script connectors, real Google permissions/configuration, and recovery tests.
-
-Implement one coherent feature and commit it separately. Extend the Postman tests
-to assert that feature's real behavior instead of continuing to expect `501`.
-No Apps Script project or Google resource is created by this foundation.
-
-Archive uses one mutable metadata source identity, immutable review snapshots,
-and distinct PDF IDs. An approved old version remains active during a valid
-replacement review. No publication delay is added. The newer Archive specification
-overrides older Form/Sheet Archive assumptions in the architecture review.
-API JSON routes use `/api/archives`; future `/archive` pages are a separate UI layer.
-Timeline visibility controls and the exact article schema are still draft contracts.
-
-## Technical references
-
-- Next.js: installed `frontend/node_modules/next/dist/docs/` route handlers and
-  environment guides are the reference for the pinned framework version.
-- [MongoDB connection pools](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/connection-pools/)
-  and [connection options](https://www.mongodb.com/docs/drivers/node/current/connect/connection-options/).
+Domain logic stays in `backend/src`; thin HTTP adapters stay in
+`frontend/src/app/api`. Only server code imports `@kmits/backend`. The MongoDB
+connection pool is reused per process. Remaining work includes Articles,
+Timeline, external connectors, UI integration and operator verification against
+real Drive resources.

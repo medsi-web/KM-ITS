@@ -1,113 +1,107 @@
 # KM ITS website
 
-A pnpm workspace with one Next.js application and a separate server-only backend
-package. Both run in the same Next.js process; the backend is not a second server.
+A pnpm workspace with one Next.js application in `frontend/` and a server-only
+`@kmits/backend` package. Both run in the same Next.js process.
+
+The API inventory contains **33 operations: 19 implemented and 14 reserved**.
+Implemented features include system health, local username/password admin access,
+account management, Archive ingestion, admin monitoring and manual visibility,
+sync logs, and public Archive reads/open redirects. Articles, Timeline, and their
+internal ingestion operations remain reserved and return `501` after applicable
+access and transport checks. Frontend pages are maintained separately; this
+backend work changes only the HTTP adapters under the frontend package.
 
 ## Structure
 
 ```text
 backend/
-  public/              Reserved assets; not automatically served
-  src/
-    contracts/         API operation inventory
-    modules/           Domain logic, added per feature
-    integrations/      External service adapters
-    lib/               Database, validation, and security helpers
-    index.ts           Server-only package entry
-  tests/
-  postman/             Collection, local environment, and testing guide
-  scripts/             OpenAPI/Postman generator
-  openapi.json         Current API foundation contract
+  src/contracts/       HTTP operation inventory
+  src/modules/         Domain rules, authentication, database access
+  src/integrations/    Ingestion transport and Drive verification
+  tests/               Unit and integration coverage
+  scripts/             Setup, migration, API artifact generation
+  openapi.json         API contract
+  postman/             Collection and local environment
 frontend/
-  public/              Public website assets
-  src/
-    app/               Next.js routes, pages, and layouts
-      api/             Thin HTTP adapters for backend modules
-    components/        UI components
-    lib/               Frontend helpers
-design/
-  assets/              Design references and exports
-docs/
-  archive.md           Archive specification
+  src/app/api/         Thin Next.js HTTP adapters
+  src/app/             Pages and layouts maintained by the frontend team
+  public/              Website assets
+design/                Design references
+docs/archive.md        Archive specification
 ```
 
-The API provides 34 operations for system checks, Google admin access, Archive,
-Articles, Timeline, and Apps Script ingestion. System checks, Google login,
-24-hour sessions, and admin account management are implemented. Domain operations
-return `501` after required access checks. The website
-still displays the original Next.js starter page. See [backend/README.md](backend/README.md)
-for setup, current limitations, and the feature development order.
+## Setup
 
-## Setup and commands
+Use Node.js 24+ and the pnpm version declared in `package.json`. Commands below
+are operator instructions, not evidence of completed setup or validation.
 
-Use Node.js 24 or newer and the pnpm version declared in the root `package.json`.
-Run these commands from the repository root:
-
-```sh
+```powershell
 pnpm install
-cp frontend/.env.example frontend/.env.local
+Copy-Item frontend/.env.example frontend/.env.local
+```
+
+Configure a MongoDB replica set or Atlas, `APP_ORIGIN`, and private bootstrap
+credentials in `frontend/.env.local`. For a fresh installation:
+
+```powershell
+pnpm auth:setup
+pnpm auth:bootstrap
+pnpm archives:setup
 pnpm dev
+```
+
+Remove bootstrap credentials after provisioning. Existing installations must
+follow the [authentication migration guide](backend/src/modules/auth/README.md)
+and use `pnpm auth:migrate` with its documented mapping and confirmation arguments.
+No default account exists.
+
+Archive setup also needs registered source folders in `ARCHIVE_SOURCE_CONFIG`,
+an ingestion secret, an isolated Drive service account with Viewer access only
+to the registered folders, and a Drive API key for anonymous PDF-readability
+checks. See [backend setup and behavior](backend/README.md). No Apps Script
+connector or live Google resource is provisioned by this repository.
+
+Open <http://localhost:3000> during development. Runtime environment files belong
+in `frontend/`; secrets must never use `NEXT_PUBLIC_` names.
+
+## Available commands
+
+Run from the repository root when validation or deployment is intended:
+
+```powershell
 pnpm test
 pnpm test:integration
-pnpm api:check
+pnpm test:archives
 pnpm lint
 pnpm typecheck
 pnpm build
 pnpm start
+pnpm api:generate
+pnpm api:check
 ```
 
-`dev` and `start` run `@kmits/frontend`. `build` checks the backend package and
-builds the frontend. `lint` and `typecheck` check both workspace packages.
-`test` runs backend unit/contract checks. With the server running, `pnpm test:api`
-runs the [Postman collection](backend/postman/README.md) locally through Newman.
-After building, `pnpm test:http` runs an isolated HTTP/Postman auth workflow with
-a temporary MongoDB replica set. For your own account, follow the
-[Google authentication setup](backend/src/modules/auth/README.md).
-`pnpm api:generate` regenerates checked-in OpenAPI/Postman artifacts.
-
-Open <http://localhost:3000> during development. The starter currently downloads
-Google Fonts at build time, so production builds require access to Google Fonts.
+`build` typechecks the backend and builds the frontend. `lint` and `typecheck`
+cover both packages. `test:archives` runs the Archive Postman workflow.
+`test:api` runs the [Postman collection](backend/postman/README.md) against a
+running server; `test:http` runs an isolated HTTP authentication workflow after
+a build.
 
 ## Ownership boundaries
 
-- Put business rules, database access, authentication rules, and synchronization
-  logic in `backend/src`. Export server APIs deliberately from `@kmits/backend`.
-- Put route adapters in `frontend/src/app/api`; they call backend services.
-- Server Components can call backend services directly when appropriate.
-- Client Components must not import the backend package. Its entry imports
-  `server-only` to prevent accidental use from client bundles. Do not bypass the
-  package entry using relative imports into backend source files.
-- Keep Next.js configuration and runtime `.env` files in `frontend/`. Environment
-  files remain ignored by Git. Secrets must never use a `NEXT_PUBLIC_` variable.
-- Website assets belong in `frontend/public`, outside `frontend/src`.
-- The existing `/docs` ignore rule is preserved. `docs/archive.md` is already
-  tracked; other local working documents are not automatically added to Git.
+Business rules, authentication, persistence, and integrations belong in
+`backend/src`. HTTP adapters belong in `frontend/src/app/api`. Only server code
+may import `@kmits/backend`; Client Components must not import the package or
+bypass its `server-only` entry through relative paths. Website assets belong in
+`frontend/public`. Root configuration coordinates the two workspace packages.
 
-Root configuration coordinates the workspace; application configuration lives
-with the package that owns it. No additional deployment service is introduced.
+The existing `/docs` ignore rule remains; `docs/archive.md` is tracked and other
+local working documents are not automatically added to Git.
 
 ## Local knowledge graph
 
-Graphify indexes source relationships and project specifications for navigation.
-Generated artifacts and extraction caches stay in `graphify-out/`, ignored by Git:
-
-- `graph.json`: queryable graph with source evidence and relationship confidence.
-- `graph.html`: interactive graph visualization.
-- `GRAPH_REPORT.md`: communities, important nodes, and graph diagnostics.
-
-With the graphify CLI installed in your Python environment, query from the repo root:
-
-```sh
-graphify query "Where are backend ownership and Archive approval defined?"
-```
-
-Use the graphify skill to create or refresh the graph after source/specification
-changes, including semantic extraction of changed documents. `.graphifyignore`
-deliberately re-includes local `docs/` files without changing their Git tracking.
-The graph contains private local working references, so keep its outputs local.
-Planned Archive behavior must remain distinguishable from implemented code.
-
-The initial graph uses Graphify 0.9.48. For a full refresh with that version,
-register `.mmd` in `graphify.detect.DOC_EXTENSIONS` before detection so Mermaid
-reference files are included as documents. Do not rename the source diagrams.
-Keep generated artifacts under `graphify-out/`; no graph output is committed.
+Graphify is optional local navigation tooling. Generated graphs and caches stay
+in ignored `graphify-out/` and may contain private local references. Consult the
+source when graph evidence is stale, and distinguish implemented behavior from
+planned specifications. Use the graphify skill for refreshes; no graph output is
+committed. For Graphify 0.9.48, register `.mmd` in `graphify.detect.DOC_EXTENSIONS`
+before detection so Mermaid references are included without renaming them.

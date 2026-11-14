@@ -15,11 +15,12 @@
     "test:auth": "newman run postman/Auth.postman_collection.json -e postman/Local.postman_environment.json --bail --timeout-request 10000 --reporter-cli-no-assertions",
     "auth:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs",
     "auth:bootstrap": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs --bootstrap",
+    "auth:migrate": "node --env-file-if-exists=../frontend/.env.local scripts/migrate-auth.mjs",
+    "archives:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-archives.mjs",
+    "test:archives": "newman run postman/Archive.postman_collection.json -e postman/Local.postman_environment.json --bail --timeout-request 10000 --reporter-cli-no-assertions",
     "api:generate": "node scripts/generate-api-kit.mjs",
     "api:check": "node scripts/generate-api-kit.mjs --check",
-    "test:api": "newman run postman/KMITS.postman_collection.json -e postman/Local.postman_environment.json --timeout-request 10000 --reporter-cli-no-assertions",
-    "auth:migrate": "node --env-file-if-exists=../frontend/.env.local scripts/migrate-auth.mjs",
-    "archives:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-archives.mjs"
+    "test:api": "newman run postman/KMITS.postman_collection.json -e postman/Local.postman_environment.json --timeout-request 10000 --reporter-cli-no-assertions"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

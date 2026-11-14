@@ -26,7 +26,7 @@ test("all generated Postman scripts parse before they reach a live server", asyn
     for (const event of item.event ?? []) assert.doesNotThrow(() => new Script(event.script.exec.join("\n")), item.name);
     for (const child of item.item ?? []) validate(child);
   }
-  for (const file of ["KMITS.postman_collection.json", "Auth.postman_collection.json"]) {
+  for (const file of ["KMITS.postman_collection.json", "Auth.postman_collection.json", "Archive.postman_collection.json"]) {
     validate(JSON.parse(await readFile(new URL(`../postman/${file}`, import.meta.url), "utf8")) as Item);
   }
 });

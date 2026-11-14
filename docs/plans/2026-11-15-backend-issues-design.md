@@ -64,3 +64,7 @@ References: https://github.com/medsi-web/KM-ITS/issues/10,
 https://github.com/medsi-web/KM-ITS/issues/11,
 https://github.com/medsi-web/KM-ITS/issues/12,
 https://github.com/medsi-web/KM-ITS/issues/13.
+
+## Execution constraint update
+
+On 2026-11-15 the user requested implementation only: do not run tests, lint, typechecks, builds, verification commands, or make commits for the resumed work. Test fixtures and Postman artifacts may be prepared but their execution remains pending. Do not treat authored test coverage as passing verification. The ignored knowledge graph is marked stale until a later refresh.

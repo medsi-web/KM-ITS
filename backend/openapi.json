@@ -2,13 +2,12 @@
   "openapi": "3.1.0",
   "info": {
     "title": "KM ITS API",
-    "version": "0.2.0",
-    "description": "34 operations. System checks, Google admin login, 24-hour MongoDB sessions, and account management are implemented. Archive/Articles/Timeline ingestion and domain operations remain reserved. Admin guards apply even to reserved routes."
+    "version": "0.3.0",
+    "description": "Local password authentication, fixed 24-hour sessions, admin accounts and Archive ingestion/publication. Articles and Timeline remain explicitly reserved. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout."
   },
   "servers": [
     {
-      "url": "http://localhost:3000",
-      "description": "Local Next.js host"
+      "url": "http://localhost:3000"
     }
   ],
   "paths": {
@@ -19,9 +18,7 @@
         "tags": [
           "System"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
           "200": {
@@ -29,12 +26,55 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
                 }
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/ready": {
@@ -44,9 +84,7 @@
         "tags": [
           "System"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
           "200": {
@@ -54,13 +92,45 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "503": {
-            "description": "MongoDB is not configured or is unavailable.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -69,90 +139,64 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/auth/login": {
-      "get": {
+      "post": {
         "operationId": "auth.login",
-        "summary": "Start Google admin login",
+        "summary": "Sign in using username and password",
         "tags": [
           "Auth"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
-          "302": {
-            "description": "Redirect to Google authorization; sets a temporary HttpOnly OAuth cookie.",
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              },
-              "Set-Cookie": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Login attempt limit reached.",
+          "200": {
+            "description": "Sign in using username and password",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Google login or database not configured/initialized or storage unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/callback/google": {
-      "get": {
-        "operationId": "auth.callback",
-        "summary": "Complete Google admin login",
-        "tags": [
-          "Auth"
-        ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
-        "x-implementation-status": "implemented",
-        "x-intended-access": "public",
-        "security": [],
-        "responses": {
-          "302": {
-            "description": "Sets the 24-hour admin session cookie and redirects to /api/auth/me.",
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              },
-              "Set-Cookie": {
-                "schema": {
-                  "type": "string"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Session"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid/expired/used OAuth state or browser binding.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -162,7 +206,7 @@
             }
           },
           "401": {
-            "description": "Google login cancelled or token/code verification failed.",
+            "description": "Invalid username/password or login rate limit. Same generic error.",
             "content": {
               "application/json": {
                 "schema": {
@@ -171,8 +215,28 @@
               }
             }
           },
-          "403": {
-            "description": "Google account not allowlisted or active.",
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -182,12 +246,204 @@
             }
           },
           "503": {
-            "description": "Google login or database not configured/initialized or storage unavailable.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Failure"
                 }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exactly APP_ORIGIN."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "operationId": "auth.password",
+        "summary": "Change password and revoke existing sessions",
+        "tags": [
+          "Auth"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change password and revoke existing sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "passwordChanged": {
+                          "const": true
+                        },
+                        "reloginRequired": {
+                          "const": true
+                        }
+                      },
+                      "required": [
+                        "passwordChanged",
+                        "reloginRequired"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exactly APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
               }
             }
           }
@@ -201,9 +457,7 @@
         "tags": [
           "Auth"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
@@ -215,13 +469,45 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Session"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -231,7 +517,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -241,7 +527,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -250,7 +536,8 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/auth/logout": {
@@ -260,9 +547,7 @@
         "tags": [
           "Auth"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
@@ -274,13 +559,55 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
                 }
               }
             }
           },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -290,7 +617,37 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -300,7 +657,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -316,10 +673,9 @@
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -327,8 +683,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -340,9 +695,7 @@
         "tags": [
           "Accounts"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "super-admin",
         "security": [
           {
             "adminCookie": []
@@ -354,23 +707,65 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid pagination parameters.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Account"
+                          }
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "limit",
+                        "offset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -380,7 +775,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -390,7 +785,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -400,38 +795,15 @@
             }
           }
         },
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 10000,
-              "default": 0
-            }
-          }
-        ]
+        "parameters": []
       },
       "post": {
         "operationId": "accounts.create",
-        "summary": "Create an allowlisted admin invitation",
+        "summary": "Create an admin with a one-time temporary password",
         "tags": [
           "Accounts"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "super-admin",
         "security": [
           {
             "adminCookie": []
@@ -439,17 +811,49 @@
         ],
         "responses": {
           "200": {
-            "description": "Create an allowlisted admin invitation",
+            "description": "Create an admin with a one-time temporary password",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TemporaryCredential"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid account fields, ID, or JSON.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -459,7 +863,7 @@
             }
           },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -469,7 +873,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -479,7 +883,7 @@
             }
           },
           "409": {
-            "description": "Duplicate account, last super admin, or successor not ready.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -489,7 +893,7 @@
             }
           },
           "413": {
-            "description": "Payload exceeds 256 KiB.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -499,7 +903,7 @@
             }
           },
           "415": {
-            "description": "Use application/json.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -509,7 +913,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -525,10 +929,9 @@
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -536,8 +939,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ],
         "requestBody": {
@@ -545,24 +947,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "email",
-                  "name"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email",
-                    "maxLength": 254
-                  },
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 120
-                  }
-                }
+                "$ref": "#/components/schemas/AccountCreate"
               }
             }
           }
@@ -576,9 +961,7 @@
         "tags": [
           "Accounts"
         ],
-        "description": "Implemented foundation operation. Database readiness does not certify domain feature readiness.",
         "x-implementation-status": "implemented",
-        "x-intended-access": "super-admin",
         "security": [
           {
             "adminCookie": []
@@ -590,13 +973,45 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Success"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Account"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid account fields, ID, or JSON.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -606,7 +1021,7 @@
             }
           },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -616,7 +1031,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -626,7 +1041,7 @@
             }
           },
           "404": {
-            "description": "Account does not exist.",
+            "description": "Record missing or not publicly visible.",
             "content": {
               "application/json": {
                 "schema": {
@@ -636,7 +1051,7 @@
             }
           },
           "409": {
-            "description": "Duplicate account, last super admin, or successor not ready.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -646,7 +1061,7 @@
             }
           },
           "413": {
-            "description": "Payload exceeds 256 KiB.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -656,7 +1071,7 @@
             }
           },
           "415": {
-            "description": "Use application/json.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -666,7 +1081,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -683,18 +1098,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -702,8 +1115,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ],
         "requestBody": {
@@ -711,46 +1123,71 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "minProperties": 1,
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 120
-                  },
-                  "active": {
-                    "type": "boolean"
-                  },
-                  "role": {
-                    "type": "string",
-                    "enum": [
-                      "ADMIN",
-                      "SUPER_ADMIN"
-                    ]
-                  }
-                }
+                "$ref": "#/components/schemas/AccountUpdate"
               }
             }
           }
         }
       }
     },
-    "/api/archives": {
-      "get": {
-        "operationId": "archives.list",
-        "summary": "List visible approved documents",
+    "/api/admin/accounts/{id}/reset-password": {
+      "post": {
+        "operationId": "accounts.resetPassword",
+        "summary": "Reset another admin password and revoke sessions",
         "tags": [
-          "Archive"
+          "Accounts"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "public",
-        "security": [],
+        "x-implementation-status": "implemented",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "200": {
+            "description": "Reset another admin password and revoke sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TemporaryCredential"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -758,24 +1195,69 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/archives/{id}": {
-      "get": {
-        "operationId": "archives.detail",
-        "summary": "Read approved document metadata",
-        "tags": [
-          "Archive"
-        ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "public",
-        "security": [],
-        "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          },
+          "401": {
+            "description": "Missing, expired or revoked session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -792,8 +1274,199 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
             },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            "description": "Exactly APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/archives": {
+      "get": {
+        "operationId": "archives.list",
+        "summary": "List visible synchronized documents",
+        "tags": [
+          "Archive"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "List visible synchronized documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PublicArchive"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total",
+                        "limit",
+                        "offset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/archives/{id}": {
+      "get": {
+        "operationId": "archives.detail",
+        "summary": "Read visible document metadata",
+        "tags": [
+          "Archive"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Read visible document metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PublicArchive"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ]
       }
@@ -805,13 +1478,32 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "public",
+        "x-implementation-status": "implemented",
         "security": [],
         "responses": {
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "302": {
+            "description": "Verified public PDF; redirect to its Drive URL.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -828,8 +1520,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           }
         ]
       }
@@ -837,21 +1528,61 @@
     "/api/admin/archives": {
       "get": {
         "operationId": "archives.adminList",
-        "summary": "List archive records and review state",
+        "summary": "List archive records and source state",
         "tags": [
           "Archive"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "List archive records and source state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -861,17 +1592,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -881,7 +1602,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -890,27 +1611,68 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/admin/archives/{id}": {
       "get": {
         "operationId": "archives.adminDetail",
-        "summary": "Inspect active and pending snapshots",
+        "summary": "Inspect the latest snapshot and source state",
         "tags": [
           "Archive"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Inspect the latest snapshot and source state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -920,7 +1682,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -929,8 +1691,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "404": {
+            "description": "Record missing or not publicly visible.",
             "content": {
               "application/json": {
                 "schema": {
@@ -940,7 +1702,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -957,186 +1719,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
-          }
-        ]
-      }
-    },
-    "/api/admin/archives/{id}/approve": {
-      "post": {
-        "operationId": "archives.approve",
-        "summary": "Approve the specified current candidate",
-        "tags": [
-          "Archive"
-        ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
-        "security": [
-          {
-            "adminCookie": []
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
             }
-          },
-          "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
-          },
-          {
-            "name": "Origin",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uri"
-            },
-            "description": "Must exactly match configured APP_ORIGIN."
-          },
-          {
-            "name": "X-CSRF-Token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
-          }
-        ]
-      }
-    },
-    "/api/admin/archives/{id}/reject": {
-      "post": {
-        "operationId": "archives.reject",
-        "summary": "Reject the specified current candidate",
-        "tags": [
-          "Archive"
-        ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
-        "security": [
-          {
-            "adminCookie": []
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
-          },
-          {
-            "name": "Origin",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uri"
-            },
-            "description": "Must exactly match configured APP_ORIGIN."
-          },
-          {
-            "name": "X-CSRF-Token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
           }
         ]
       }
@@ -1144,21 +1727,71 @@
     "/api/admin/archives/{id}/publish": {
       "post": {
         "operationId": "archives.publish",
-        "summary": "Restore visibility of an existing approval",
+        "summary": "Clear manual hiding; invalid sources remain hidden",
         "tags": [
           "Archive"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Clear manual hiding; invalid sources remain hidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1168,7 +1801,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1177,8 +1810,38 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1188,7 +1851,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1205,18 +1868,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -1224,8 +1885,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -1237,17 +1897,67 @@
         "tags": [
           "Archive"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Manually hide a document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1257,7 +1967,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1266,8 +1976,38 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1277,7 +2017,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1294,18 +2034,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -1313,8 +2051,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -1326,13 +2063,11 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1341,7 +2076,8 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/articles/{id}": {
@@ -1351,13 +2087,21 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1374,8 +2118,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           }
         ]
       }
@@ -1387,9 +2130,7 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
@@ -1397,7 +2138,7 @@
         ],
         "responses": {
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1407,7 +2148,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1417,17 +2158,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1436,7 +2167,8 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/admin/articles/{id}": {
@@ -1446,9 +2178,7 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
@@ -1456,7 +2186,7 @@
         ],
         "responses": {
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1466,7 +2196,17 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1476,17 +2216,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1503,8 +2233,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           }
         ]
       },
@@ -1514,17 +2243,25 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1534,7 +2271,47 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1544,17 +2321,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1571,18 +2338,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -1590,8 +2355,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -1603,17 +2367,25 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1623,7 +2395,47 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1633,17 +2445,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1660,18 +2462,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -1679,8 +2479,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -1692,17 +2491,25 @@
         "tags": [
           "Articles"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1712,7 +2519,47 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1722,17 +2569,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1749,18 +2586,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -1768,8 +2603,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -1781,13 +2615,11 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1796,7 +2628,8 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/events/{id}": {
@@ -1806,13 +2639,21 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "public",
         "security": [],
         "responses": {
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1829,8 +2670,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           }
         ]
       }
@@ -1842,9 +2682,7 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
@@ -1852,7 +2690,7 @@
         ],
         "responses": {
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1862,7 +2700,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1872,17 +2710,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1891,7 +2719,8 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     },
     "/api/admin/events/{id}": {
@@ -1901,9 +2730,7 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
@@ -1911,7 +2738,7 @@
         ],
         "responses": {
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1921,7 +2748,17 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1931,17 +2768,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1958,8 +2785,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           }
         ]
       },
@@ -1969,17 +2795,25 @@
         "tags": [
           "Timeline"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1989,7 +2823,47 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1999,17 +2873,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2026,18 +2890,16 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Application record ID. Domain ID validation is not implemented yet."
+            }
           },
           {
             "name": "Origin",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uri"
+              "type": "string"
             },
-            "description": "Must exactly match configured APP_ORIGIN."
+            "description": "Exactly APP_ORIGIN."
           },
           {
             "name": "X-CSRF-Token",
@@ -2045,8 +2907,7 @@
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "Session-bound token returned by GET /api/auth/me."
+            }
           }
         ]
       }
@@ -2054,21 +2915,81 @@
     "/api/internal/sync/archives": {
       "post": {
         "operationId": "sync.archives",
-        "summary": "Receive Drive archive observations",
+        "summary": "Receive ordered, idempotent Drive archive observations",
         "tags": [
           "Integration"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "integration",
+        "x-implementation-status": "implemented",
         "security": [
           {
-            "appsScriptBearer": []
+            "integrationBearer": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Receive ordered, idempotent Drive archive observations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "outcome": {
+                          "enum": [
+                            "applied",
+                            "unchanged",
+                            "duplicate",
+                            "stale",
+                            "invalid",
+                            "conflict"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "outcome",
+                        "receivedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "400": {
-            "description": "Invalid JSON or non-object body.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2078,7 +2999,17 @@
             }
           },
           "401": {
-            "description": "Missing or invalid integration credential.",
+            "description": "Invalid integration bearer credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2088,7 +3019,7 @@
             }
           },
           "413": {
-            "description": "Payload exceeds 256 KiB.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2098,7 +3029,7 @@
             }
           },
           "415": {
-            "description": "Content-Type must be application/json.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2107,8 +3038,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+          "422": {
+            "description": "Observation violates schema or registered source.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2118,7 +3049,7 @@
             }
           },
           "503": {
-            "description": "Ingestion secret is missing or shorter than 32 characters.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2128,16 +3059,44 @@
             }
           }
         },
+        "parameters": [],
         "requestBody": {
           "required": true,
-          "description": "Transport-only JSON object, maximum 256 KiB. This is NOT a finalized ingestion schema. Even valid transport returns 501 and is not saved.",
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true
+                "$ref": "#/components/schemas/ArchiveObservation"
               },
-              "example": {}
+              "example": {
+                "protocolVersion": 1,
+                "streamId": "http-test-stream",
+                "deliveryId": "http-delivery-1",
+                "scanSequence": "1",
+                "metadataFileId": "http-metadata",
+                "metadataDriveVersion": "1",
+                "observation": "VALID",
+                "sourceCheckedAt": "2026-01-01T00:00:00.000Z",
+                "folderId": "http-folder",
+                "metadata": {
+                  "schemaVersion": 1,
+                  "driveFileId": "http-pdf",
+                  "title": "HTTP archive fixture",
+                  "description": "Temporary test document",
+                  "category": "Reports",
+                  "year": 2026,
+                  "authors": [
+                    "Test ministry"
+                  ]
+                },
+                "pdf": {
+                  "driveFileId": "http-pdf",
+                  "folderId": "http-folder",
+                  "mimeType": "application/pdf",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "publicReadable": true,
+                  "size": 100
+                }
+              }
             }
           }
         }
@@ -2150,17 +3109,15 @@
         "tags": [
           "Integration"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "integration",
         "security": [
           {
-            "appsScriptBearer": []
+            "integrationBearer": []
           }
         ],
         "responses": {
           "400": {
-            "description": "Invalid JSON or non-object body.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2170,7 +3127,17 @@
             }
           },
           "401": {
-            "description": "Missing or invalid integration credential.",
+            "description": "Invalid integration bearer credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2180,7 +3147,7 @@
             }
           },
           "413": {
-            "description": "Payload exceeds 256 KiB.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2190,7 +3157,7 @@
             }
           },
           "415": {
-            "description": "Content-Type must be application/json.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2200,7 +3167,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2210,7 +3177,7 @@
             }
           },
           "503": {
-            "description": "Ingestion secret is missing or shorter than 32 characters.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2220,16 +3187,14 @@
             }
           }
         },
+        "parameters": [],
         "requestBody": {
           "required": true,
-          "description": "Transport-only JSON object, maximum 256 KiB. This is NOT a finalized ingestion schema. Even valid transport returns 501 and is not saved.",
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "example": {}
+                "type": "object"
+              }
             }
           }
         }
@@ -2242,17 +3207,15 @@
         "tags": [
           "Integration"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
         "x-implementation-status": "reserved",
-        "x-intended-access": "integration",
         "security": [
           {
-            "appsScriptBearer": []
+            "integrationBearer": []
           }
         ],
         "responses": {
           "400": {
-            "description": "Invalid JSON or non-object body.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2262,7 +3225,17 @@
             }
           },
           "401": {
-            "description": "Missing or invalid integration credential.",
+            "description": "Invalid integration bearer credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2272,7 +3245,7 @@
             }
           },
           "413": {
-            "description": "Payload exceeds 256 KiB.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2282,7 +3255,7 @@
             }
           },
           "415": {
-            "description": "Content-Type must be application/json.",
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2292,7 +3265,7 @@
             }
           },
           "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2302,7 +3275,7 @@
             }
           },
           "503": {
-            "description": "Ingestion secret is missing or shorter than 32 characters.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2312,16 +3285,14 @@
             }
           }
         },
+        "parameters": [],
         "requestBody": {
           "required": true,
-          "description": "Transport-only JSON object, maximum 256 KiB. This is NOT a finalized ingestion schema. Even valid transport returns 501 and is not saved.",
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "example": {}
+                "type": "object"
+              }
             }
           }
         }
@@ -2330,21 +3301,61 @@
     "/api/admin/sync-logs": {
       "get": {
         "operationId": "sync.logs",
-        "summary": "Inspect synchronization outcomes",
+        "summary": "Inspect Archive synchronization outcomes",
         "tags": [
           "Integration"
         ],
-        "description": "Reserved domain adapter, returning 501 after any required session, role, CSRF, or integration checks. Domain schemas and behavior remain unimplemented.",
-        "x-implementation-status": "reserved",
-        "x-intended-access": "admin",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Inspect Archive synchronization outcomes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Admin session missing, expired, revoked, or account inactive.",
+            "description": "Missing, expired or revoked session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2354,17 +3365,7 @@
             }
           },
           "403": {
-            "description": "Role or mutation CSRF/origin check failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Reserved operation. No domain data is read or saved.",
+            "description": "Role, temporary-password restriction or CSRF rejected.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2374,7 +3375,7 @@
             }
           },
           "503": {
-            "description": "Authentication storage is unavailable or not initialized.",
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2383,75 +3384,21 @@
               }
             }
           }
-        }
+        },
+        "parameters": []
       }
     }
   },
   "components": {
-    "securitySchemes": {
-      "adminCookie": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "kmits_session",
-        "description": "Opaque 24-hour website session. HTTPS deployments use __Host-kmits_session instead. Mutations also require Origin and X-CSRF-Token."
-      },
-      "appsScriptBearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Server-side APPS_SCRIPT_INGESTION_SECRET, 32+ characters. Independent of admin login. Never send this from public browser code."
-      }
-    },
     "schemas": {
-      "Success": {
-        "type": "object",
-        "required": [
-          "success",
-          "data",
-          "meta"
-        ],
-        "properties": {
-          "success": {
-            "const": true
-          },
-          "data": {
-            "type": "object"
-          },
-          "meta": {
-            "type": "object",
-            "required": [
-              "requestId",
-              "timestamp"
-            ],
-            "properties": {
-              "requestId": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "timestamp": {
-                "type": "string",
-                "format": "date-time"
-              }
-            }
-          }
-        }
-      },
       "Failure": {
         "type": "object",
-        "required": [
-          "success",
-          "error",
-          "meta"
-        ],
         "properties": {
           "success": {
             "const": false
           },
           "error": {
             "type": "object",
-            "required": [
-              "code",
-              "message"
-            ],
             "properties": {
               "code": {
                 "type": "string"
@@ -2459,14 +3406,15 @@
               "message": {
                 "type": "string"
               }
-            }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
           },
           "meta": {
             "type": "object",
-            "required": [
-              "requestId",
-              "timestamp"
-            ],
             "properties": {
               "requestId": {
                 "type": "string",
@@ -2476,9 +3424,467 @@
                 "type": "string",
                 "format": "date-time"
               }
+            },
+            "required": [
+              "requestId",
+              "timestamp"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "success",
+          "error",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "SUPER_ADMIN"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "requirePasswordChange": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "lastLoginAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "name",
+          "role",
+          "active",
+          "requirePasswordChange",
+          "createdAt",
+          "updatedAt",
+          "lastLoginAt"
+        ],
+        "additionalProperties": false
+      },
+      "Login": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true,
+            "description": "At most 512 UTF-8 bytes."
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "PasswordChange": {
+        "type": "object",
+        "properties": {
+          "oldPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true,
+            "description": "At most 512 UTF-8 bytes."
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true,
+            "description": "At most 512 UTF-8 bytes."
+          }
+        },
+        "required": [
+          "oldPassword",
+          "newPassword"
+        ],
+        "additionalProperties": false
+      },
+      "AccountCreate": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "SUPER_ADMIN"
+            ]
+          }
+        },
+        "required": [
+          "username",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "AccountUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "SUPER_ADMIN"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "csrfToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account",
+          "expiresAt",
+          "csrfToken"
+        ],
+        "additionalProperties": false
+      },
+      "TemporaryCredential": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/Account"
+          },
+          "temporaryPassword": {
+            "type": "string",
+            "description": "Returned once; distribute privately. Login is restricted until password change."
+          }
+        },
+        "required": [
+          "account",
+          "temporaryPassword"
+        ],
+        "additionalProperties": false
+      },
+      "PublicArchive": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "year": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ministryId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "openUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "category",
+          "year",
+          "authors",
+          "ministryId",
+          "updatedAt",
+          "openUrl"
+        ],
+        "additionalProperties": false
+      },
+      "ArchiveObservation": {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "const": 1
+          },
+          "streamId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,200}$"
+          },
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,200}$"
+          },
+          "scanSequence": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,99})$"
+          },
+          "metadataFileId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,200}$"
+          },
+          "metadataDriveVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,99})$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observation": {
+            "enum": [
+              "VALID",
+              "INVALID",
+              "MISSING",
+              "UNAVAILABLE",
+              "SYNC_ERROR"
+            ]
+          },
+          "sourceCheckedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "folderId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,200}$"
+          },
+          "diagnostics": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "schemaVersion": {
+                "const": 1
+              },
+              "driveFileId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,200}$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 5000
+              },
+              "category": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "year": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1900,
+                "maximum": 9999
+              },
+              "authors": {
+                "type": "array",
+                "maxItems": 30,
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              }
+            },
+            "required": [
+              "schemaVersion",
+              "driveFileId",
+              "title"
+            ],
+            "additionalProperties": false
+          },
+          "pdf": {
+            "type": "object",
+            "properties": {
+              "driveFileId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,200}$"
+              },
+              "folderId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,200}$"
+              },
+              "mimeType": {
+                "const": "application/pdf"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-fA-F0-9]{64}$"
+              },
+              "publicReadable": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 300
+              }
+            },
+            "required": [
+              "driveFileId",
+              "folderId",
+              "mimeType",
+              "sha256",
+              "publicReadable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "streamId",
+          "deliveryId",
+          "scanSequence",
+          "metadataFileId",
+          "metadataDriveVersion",
+          "observation",
+          "sourceCheckedAt",
+          "folderId"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "observation": {
+                  "const": "VALID"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "metadata",
+                "pdf"
+              ],
+              "properties": {
+                "metadataDriveVersion": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,99})$"
+                }
+              }
+            },
+            "else": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "metadata"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "pdf"
+                    ]
+                  }
+                ]
+              }
             }
           }
-        }
+        ],
+        "description": "Stream and folder must match ARCHIVE_SOURCE_CONFIG. Metadata driveFileId equals PDF driveFileId. Sequences are decimal strings; sourceCheckedAt is diagnostic, not ordering authority. SYNC_ERROR never proves source absence."
+      }
+    },
+    "securitySchemes": {
+      "adminCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "kmits_session",
+        "description": "HTTPS uses __Host-kmits_session. Mutations require exact Origin and session CSRF token."
+      },
+      "integrationBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "APPS_SCRIPT_INGESTION_SECRET; server-to-server only."
       }
     }
   }
