@@ -13,4 +13,4 @@ export const syncArchives = defineHandler("sync.archives", async (request) => {
 });
 export const syncArticles = reservedEndpoint("sync.articles");
 export const syncEvents = reservedEndpoint("sync.events");
-export const syncLogs = reservedEndpoint("sync.logs");
+export { archiveSyncLogs as syncLogs } from "../archives/admin.ts";

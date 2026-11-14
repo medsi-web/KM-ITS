@@ -13,7 +13,10 @@ test("every declared method has a real thin Next.js adapter pointing to a backen
     assert.ok(adapter.includes('from "@kmits/backend"'), `${id} workspace boundary`);
     const domain = id.split(".")[0];
     const module = await readFile(new URL(`../src/modules/${domain}/handlers.ts`, import.meta.url), "utf8");
-    assert.ok(module.includes(`export const ${symbol} =`), `${id} handler exists`);
+    const direct = module.includes(`export const ${symbol} =`);
+    const reexport = [...module.matchAll(/export\s*\{([^}]+)\}\s*from\s*["'][^"']+["']/g)]
+      .some((match) => match[1].split(",").some((entry) => entry.trim().split(/\s+as\s+/).at(-1) === symbol));
+    assert.ok(direct || reexport, `${id} handler exists`);
   }
 });
 

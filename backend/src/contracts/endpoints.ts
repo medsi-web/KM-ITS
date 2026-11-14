@@ -22,12 +22,10 @@ export const endpoints = {
   "archives.list": { method: "GET", path: "/api/archives", group: "Archive", access: "public", summary: "List visible approved documents" },
   "archives.detail": { method: "GET", path: "/api/archives/{id}", group: "Archive", access: "public", summary: "Read approved document metadata" },
   "archives.open": { method: "GET", path: "/api/archives/{id}/open", group: "Archive", access: "public", summary: "Verify the active PDF and open its Drive source" },
-  "archives.adminList": { method: "GET", path: "/api/admin/archives", group: "Archive", access: "admin", summary: "List archive records and review state" },
-  "archives.adminDetail": { method: "GET", path: "/api/admin/archives/{id}", group: "Archive", access: "admin", summary: "Inspect active and pending snapshots" },
-  "archives.approve": { method: "POST", path: "/api/admin/archives/{id}/approve", group: "Archive", access: "admin", summary: "Approve the specified current candidate" },
-  "archives.reject": { method: "POST", path: "/api/admin/archives/{id}/reject", group: "Archive", access: "admin", summary: "Reject the specified current candidate" },
-  "archives.publish": { method: "POST", path: "/api/admin/archives/{id}/publish", group: "Archive", access: "admin", summary: "Restore visibility of an existing approval" },
-  "archives.unpublish": { method: "POST", path: "/api/admin/archives/{id}/unpublish", group: "Archive", access: "admin", summary: "Manually hide a document" },
+  "archives.adminList": { method: "GET", path: "/api/admin/archives", group: "Archive", access: "admin", summary: "List archive records and source state", implemented: true },
+  "archives.adminDetail": { method: "GET", path: "/api/admin/archives/{id}", group: "Archive", access: "admin", summary: "Inspect the latest snapshot and source state", implemented: true },
+  "archives.publish": { method: "POST", path: "/api/admin/archives/{id}/publish", group: "Archive", access: "admin", summary: "Clear manual hiding; invalid sources remain hidden", implemented: true },
+  "archives.unpublish": { method: "POST", path: "/api/admin/archives/{id}/unpublish", group: "Archive", access: "admin", summary: "Manually hide a document", implemented: true },
   "articles.list": { method: "GET", path: "/api/articles", group: "Articles", access: "public", summary: "List published articles" },
   "articles.detail": { method: "GET", path: "/api/articles/{id}", group: "Articles", access: "public", summary: "Read a published article" },
   "articles.adminList": { method: "GET", path: "/api/admin/articles", group: "Articles", access: "admin", summary: "List submitted articles" },
@@ -43,7 +41,7 @@ export const endpoints = {
   "sync.archives": { method: "POST", path: "/api/internal/sync/archives", group: "Integration", access: "integration", summary: "Receive ordered, idempotent Drive archive observations", implemented: true },
   "sync.articles": { method: "POST", path: "/api/internal/sync/articles", group: "Integration", access: "integration", summary: "Receive Form/Sheet article submissions" },
   "sync.events": { method: "POST", path: "/api/internal/sync/events", group: "Integration", access: "integration", summary: "Receive Google Calendar changes" },
-  "sync.logs": { method: "GET", path: "/api/admin/sync-logs", group: "Integration", access: "admin", summary: "Inspect synchronization outcomes" },
+  "sync.logs": { method: "GET", path: "/api/admin/sync-logs", group: "Integration", access: "admin", summary: "Inspect Archive synchronization outcomes", implemented: true },
 } as const satisfies Record<string, Endpoint>;
 
 export type EndpointId = keyof typeof endpoints;
