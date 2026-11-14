@@ -40,7 +40,7 @@ export const endpoints = {
   "events.adminList": { method: "GET", path: "/api/admin/events", group: "Timeline", access: "admin", summary: "List synchronized events" },
   "events.adminDetail": { method: "GET", path: "/api/admin/events/{id}", group: "Timeline", access: "admin", summary: "Inspect event synchronization state" },
   "events.update": { method: "PATCH", path: "/api/admin/events/{id}", group: "Timeline", access: "admin", summary: "Update website visibility of a source event" },
-  "sync.archives": { method: "POST", path: "/api/internal/sync/archives", group: "Integration", access: "integration", summary: "Receive Drive archive observations" },
+  "sync.archives": { method: "POST", path: "/api/internal/sync/archives", group: "Integration", access: "integration", summary: "Receive ordered, idempotent Drive archive observations", implemented: true },
   "sync.articles": { method: "POST", path: "/api/internal/sync/articles", group: "Integration", access: "integration", summary: "Receive Form/Sheet article submissions" },
   "sync.events": { method: "POST", path: "/api/internal/sync/events", group: "Integration", access: "integration", summary: "Receive Google Calendar changes" },
   "sync.logs": { method: "GET", path: "/api/admin/sync-logs", group: "Integration", access: "admin", summary: "Inspect synchronization outcomes" },

@@ -134,7 +134,7 @@ test("every reserved domain operation fails closed without returning or storing 
 
 test("internal endpoints authenticate before parsing and never acknowledge ingestion", async () => {
   process.env.APPS_SCRIPT_INGESTION_SECRET = testSecret;
-  const handler = reservedEndpoint("sync.archives");
+  const handler = reservedEndpoint("sync.articles");
   assert.equal((await handler(request("{broken"))).status, 401);
   assert.equal((await handler(request("{broken", { authorization: `Bearer ${testSecret}` }))).status, 400);
   assert.equal((await handler(request("{}", { authorization: `Bearer ${testSecret}` }))).status, 501);
