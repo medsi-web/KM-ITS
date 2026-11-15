@@ -73,7 +73,7 @@ for (const [id, endpoint] of Object.entries(endpoints)) {
   const input = { "auth.login": "Login", "auth.password": "PasswordChange", "accounts.create": "AccountCreate", "accounts.update": "AccountUpdate", "sync.archives": "ArchiveObservation" }[id];
   if (input || integration) operation.requestBody = { required: true, content: { "application/json": { schema: input ? ref(input) : { type: "object" }, ...(id === "sync.archives" ? { example: observationExample } : {}) } } };
   paths[endpoint.path] ??= {}; paths[endpoint.path][endpoint.method.toLowerCase()] = operation;
-  const status = protectedRoute ? 401 : integration ? 'Number(pm.environment.get("integrationProbeStatus") || "401")' : id === "auth.login" ? 'Number(pm.environment.get("loginExpectedStatus") || "401")' : id === "system.ready" ? 'Number(pm.environment.get("readyExpectedStatus") || "503")' : id === "system.health" || id === "archives.list" ? 200 : id.startsWith("archives.") ? 404 : 501;
+  const status = protectedRoute ? 401 : integration ? 'Number(pm.environment.get("integrationProbeStatus") || "401")' : id === "auth.login" ? 'Number(pm.environment.get("loginExpectedStatus") || "401")' : id === "system.ready" ? 'Number(pm.environment.get("readyExpectedStatus") || "503")' : ["system.health", "archives.list", "events.list"].includes(id) ? 200 : /^(archives|events)\./.test(id) ? 404 : 501;
   probes.push(item(`${endpoint.method} ${endpoint.path}`, endpoint.method, endpoint.path.replace("{id}", "{{recordId}}"), id === "auth.login" ? { username: "nonexistent-probe", password: "incorrect probe password" } : endpoint.method !== "GET" ? {} : undefined, status, protectedRoute ? [assertCode("UNAUTHENTICATED")] : [], { session: false, csrf: false }));
 }
 const common = event([

@@ -2611,15 +2611,57 @@
     "/api/events": {
       "get": {
         "operationId": "events.list",
-        "summary": "List visible calendar events",
+        "summary": "List visible calendar events by window and lifecycle status",
         "tags": [
           "Timeline"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [],
         "responses": {
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "200": {
+            "description": "List visible calendar events by window and lifecycle status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2639,9 +2681,51 @@
         "tags": [
           "Timeline"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [],
         "responses": {
+          "200": {
+            "description": "Read a visible event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "404": {
             "description": "Record missing or not publicly visible.",
             "content": {
@@ -2652,8 +2736,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2682,13 +2766,55 @@
         "tags": [
           "Timeline"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "List synchronized events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing, expired or revoked session.",
             "content": {
@@ -2709,8 +2835,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2730,13 +2856,55 @@
         "tags": [
           "Timeline"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Inspect event synchronization state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing, expired or revoked session.",
             "content": {
@@ -2767,8 +2935,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2795,13 +2963,55 @@
         "tags": [
           "Timeline"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Update website visibility of a source event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
@@ -2872,8 +3082,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
