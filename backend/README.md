@@ -2,22 +2,24 @@
 
 This server-only workspace owns domain logic and persistence. The existing
 Next.js application in `frontend/` is its single HTTP host. Frontend pages remain
-untouched; the API implementation adds no admin or Archive UI.
+untouched; the API implementation adds no admin, Archive, Timeline or Article UI.
 
 ## Implemented scope
 
-The inventory contains **33 HTTP operations: 19 implemented and 14 reserved**.
+The inventory contains **33 HTTP operations, all implemented**.
 
 - System liveness and MongoDB readiness.
 - Local username/password login, session inspection, logout and password change.
 - Super-admin account listing, creation, changes and temporary password reset.
-- Archive ingestion, admin list/detail, manual hide/unhide and sync-log reading.
-- Public Archive list/detail and verified PDF open redirects.
+- Archive ingestion, admin list/detail, manual hide/unhide, public reads and verified PDF open redirects.
+- Timeline: Google Calendar event batch sync, public list/detail with window and
+  status filters, admin list/detail and manual hiding.
+- Articles: Google Form submission batch sync, admin review queue, draft editing,
+  revision-checked publish and unpublish, public list/detail.
+- Sync logs for archives, events and articles through one admin endpoint.
 
-Articles and Timeline domain operations, plus article/event ingestion, remain
-`501` after applicable authentication, CSRF and transport checks. No Apps Script
-connector is implemented. Readiness checks database connectivity; it does not
-certify authentication indexes, registered sources or Google permissions.
+No Apps Script connector is implemented. Readiness checks database connectivity;
+it does not certify indexes, registered sources or Google permissions.
 
 ## Local setup
 
@@ -38,9 +40,14 @@ installation, privately set `BOOTSTRAP_SUPER_ADMIN_USERNAME` and
 pnpm auth:setup
 pnpm auth:bootstrap
 pnpm archives:setup
+pnpm timeline:setup
+pnpm articles:setup
 pnpm dev
 ```
 
+`pnpm timeline:setup` needs `EVENT_CALENDAR_ID` and `pnpm articles:setup` needs
+`ARTICLE_FORM_ID`; both exit with a `*_NOT_CONFIGURED` code until set. Until a
+feature's setup has run, its routes return `503 *_NOT_INITIALIZED`.
 `pnpm archives:setup` exits with `ARCHIVE_SOURCES_NOT_CONFIGURED` until
 `ARCHIVE_SOURCE_CONFIG` lists at least one registered folder. This is intended:
 Archive ingestion fails closed without source registrations.
@@ -139,6 +146,57 @@ and grouping are not implemented. Opening a document verifies its current PDF
 through Drive, then redirects to the Drive viewer. Hidden or unavailable records
 return `404`; temporary verification failures may return `503`.
 
+## Timeline
+
+Specified in [docs/timeline.md](../docs/timeline.md). One shared Google Calendar
+is registered through `EVENT_CALENDAR_ID`. `POST /api/internal/sync/events`
+accepts batches of events; each event is committed separately and ordered by its
+Calendar `updated` timestamp, so retries are safe and older copies are stale.
+Cancelled events keep their last content but leave the public Timeline.
+`UPCOMING`, `ONGOING` and `FINISHED` are derived at request time. Admins hide or
+show an event with `PATCH /api/admin/events/{id}`; hiding survives source updates.
+
+## Articles
+
+Specified in [docs/articles.md](../docs/articles.md). One Google Form is
+registered through `ARTICLE_FORM_ID`. Submissions arrive unpublished and keep
+three versions: source, draft and published. Source updates refresh an unedited
+draft or flag an edited one, and never change the published copy. Admins edit the
+draft, reset it to the source, publish and unpublish. PATCH and publish require
+the current draft `revision` and return `409 ARTICLE_CHANGED` otherwise, so the
+published content is exactly what the admin reviewed.
+
+## Configuration
+
+All settings live in `frontend/.env.local`; `frontend/.env.example` lists them
+with comments. Restart the server after changing any value. Optional numeric
+settings use the default when empty; an invalid value makes the affected routes
+return `503 CONFIGURATION_INVALID` naming the setting, never a silent fallback.
+
+| Setting | Default | Range | Purpose |
+|---|---|---|---|
+| `MONGODB_URI`, `MONGODB_DATABASE` | required | | Transaction-capable MongoDB |
+| `APP_ORIGIN` | required | | Exact browser origin for login and admin mutations |
+| `APPS_SCRIPT_INGESTION_SECRET` | empty (ingestion off) | 32+ characters | Bearer secret for every `/api/internal/sync/*` route |
+| `API_MAX_JSON_BYTES` | 262144 | 1024–16777216 | Largest JSON request body |
+| `ARCHIVE_SOURCE_CONFIG` | `[]` (Archive off) | JSON array | Registered Archive folders |
+| `DRIVE_SERVICE_ACCOUNT_EMAIL`, `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY`, `DRIVE_PUBLIC_API_KEY` | empty | | Archive PDF verification |
+| `EVENT_CALENDAR_ID` | required for Timeline | | Shared Google Calendar ID |
+| `EVENT_SYNC_MAX_ITEMS` | 50 | 1–500 | Events per sync request |
+| `EVENT_DESCRIPTION_MAX_CHARS` | 8000 | 1–100000 | Event description length |
+| `EVENT_PAGE_DEFAULT_LIMIT`, `EVENT_PAGE_MAX_LIMIT` | 50, 200 | 1–1000 | Event list page size |
+| `ARTICLE_FORM_ID` | required for Articles | | Google Form ID |
+| `ARTICLE_SYNC_MAX_ITEMS` | 20 | 1–500 | Submissions per sync request |
+| `ARTICLE_SUMMARY_MAX_CHARS` | 1000 | 1–100000 | Article summary length |
+| `ARTICLE_BODY_MAX_CHARS` | 50000 | 1–1000000 | Markdown body length |
+| `ARTICLE_PAGE_DEFAULT_LIMIT`, `ARTICLE_PAGE_MAX_LIMIT` | 20, 100 | 1–1000 | Article list page size |
+| `BOOTSTRAP_SUPER_ADMIN_USERNAME`, `BOOTSTRAP_SUPER_ADMIN_PASSWORD` | empty | | First super admin only; remove after bootstrap |
+
+Raise `API_MAX_JSON_BYTES` together with `ARTICLE_BODY_MAX_CHARS` or the batch
+sizes, otherwise large batches are rejected with 413. Changing a calendar or form
+ID points the backend at a new source; existing records stay and keep their own
+source identity.
+
 ## Drive configuration
 
 Enable Drive API in the Google project. Configure
@@ -156,7 +214,7 @@ JSON handlers return `success`, `data` or `error`, and
 `meta: { requestId, timestamp }`, with `X-Request-Id` and `Cache-Control: no-store`.
 Archive open success returns a `302` redirect. Unknown paths and unsupported
 methods may use framework-generated responses. Internal JSON transport accepts
-bounded objects up to 256 KiB and rejects invalid credentials or malformed input
+bounded objects up to `API_MAX_JSON_BYTES` (default 256 KiB) and rejects invalid credentials or malformed input
 before invoking domain ingestion. Use HTTPS in production.
 
 These commands are available from the repository root; this document does not
@@ -166,6 +224,8 @@ claim that they or live setup have been run:
 pnpm test
 pnpm test:integration
 pnpm test:archives
+pnpm test:timeline
+pnpm test:articles
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -175,10 +235,10 @@ pnpm api:check
 
 [openapi.json](openapi.json) and the [Postman kit](postman/README.md) describe the
 HTTP contract. `pnpm test:api` targets a running server. `pnpm test:http` runs the
-isolated HTTP authentication workflow after a build.
+isolated HTTP workflows (probes, Auth/Archive, Timeline, Articles) after a build.
 
 Domain logic stays in `backend/src`; thin HTTP adapters stay in
 `frontend/src/app/api`. Only server code imports `@kmits/backend`. The MongoDB
-connection pool is reused per process. Remaining work includes Articles,
-Timeline, external connectors, UI integration and operator verification against
-real Drive resources.
+connection pool is reused per process. Remaining work includes the Apps Script
+connectors, UI integration, slugs and search, and operator verification against
+real Drive, Calendar and Form resources.

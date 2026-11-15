@@ -20,6 +20,8 @@
     "timeline:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-timeline.mjs",
     "articles:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-articles.mjs",
     "test:archives": "newman run postman/Archive.postman_collection.json -e postman/Local.postman_environment.json --bail --timeout-request 10000 --reporter-cli-no-assertions",
+    "test:timeline": "newman run postman/Timeline.postman_collection.json -e postman/Local.postman_environment.json --bail --timeout-request 10000 --reporter-cli-no-assertions",
+    "test:articles": "newman run postman/Articles.postman_collection.json -e postman/Local.postman_environment.json --bail --timeout-request 10000 --reporter-cli-no-assertions",
     "api:generate": "node scripts/generate-api-kit.mjs",
     "api:check": "node scripts/generate-api-kit.mjs --check",
     "test:api": "newman run postman/KMITS.postman_collection.json -e postman/Local.postman_environment.json --timeout-request 10000 --reporter-cli-no-assertions"

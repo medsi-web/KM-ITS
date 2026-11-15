@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "KM ITS API",
-    "version": "0.3.0",
-    "description": "Local password authentication, fixed 24-hour sessions, admin accounts and Archive ingestion/publication. Articles and Timeline remain explicitly reserved. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout."
+    "version": "0.4.0",
+    "description": "Local password authentication, fixed 24-hour sessions, admin accounts, Archive ingestion/publication, Timeline event sync and visibility, and Article review/publication. Limits marked with environment names are configurable. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout."
   },
   "servers": [
     {
@@ -1383,7 +1383,26 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
       }
     },
     "/api/archives/{id}": {
@@ -2077,7 +2096,31 @@
                       "const": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PublicArticle"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total",
+                        "limit",
+                        "offset"
+                      ],
+                      "additionalProperties": false
                     },
                     "meta": {
                       "type": "object",
@@ -2119,7 +2162,26 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
       }
     },
     "/api/articles/{id}": {
@@ -2143,7 +2205,7 @@
                       "const": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/PublicArticle"
                     },
                     "meta": {
                       "type": "object",
@@ -2294,7 +2356,35 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [
+          {
+            "name": "published",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "true or false."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
       }
     },
     "/api/admin/articles/{id}": {
@@ -2567,7 +2657,17 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleUpdate"
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/articles/{id}/publish": {
@@ -2733,7 +2833,17 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticlePublish"
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/articles/{id}/unpublish": {
@@ -2899,7 +3009,20 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
       }
     },
     "/api/events": {
@@ -2923,7 +3046,31 @@
                       "const": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PublicEvent"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total",
+                        "limit",
+                        "offset"
+                      ],
+                      "additionalProperties": false
                     },
                     "meta": {
                       "type": "object",
@@ -2965,7 +3112,53 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Window start (ISO 8601)."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Window end (ISO 8601)."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "UPCOMING, ONGOING or FINISHED, evaluated at request time."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
       }
     },
     "/api/events/{id}": {
@@ -2989,7 +3182,7 @@
                       "const": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/PublicEvent"
                     },
                     "meta": {
                       "type": "object",
@@ -3140,7 +3333,26 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
       }
     },
     "/api/admin/events/{id}": {
@@ -3413,7 +3625,17 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventUpdate"
+              }
+            }
+          }
+        }
       }
     },
     "/api/internal/sync/archives": {
@@ -3631,7 +3853,7 @@
                       "const": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/BatchResult"
                     },
                     "meta": {
                       "type": "object",
@@ -3712,6 +3934,16 @@
               }
             }
           },
+          "422": {
+            "description": "Batch envelope violates the schema, registered source or item limit; nothing is applied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Required server configuration or transactional storage unavailable.",
             "content": {
@@ -3729,7 +3961,33 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ArticleBatch"
+              },
+              "example": {
+                "protocolVersion": 1,
+                "formId": "1FAIpQLSexampleFormId",
+                "submissions": [
+                  {
+                    "responseId": "2_ABaOnudExampleResponse",
+                    "submittedAt": "2026-11-16T03:00:00.000Z",
+                    "submitterEmail": "contributor@example.com",
+                    "article": {
+                      "schemaVersion": 1,
+                      "title": "Ministry work programme",
+                      "summary": "Short teaser.",
+                      "category": "News",
+                      "ministry": "Ministry of Education",
+                      "authors": [
+                        "Contributor"
+                      ],
+                      "coverImage": {
+                        "driveFileId": "1AbCdEfGhIjK",
+                        "alt": "Team photo"
+                      },
+                      "body": "## Heading\n\nMarkdown body."
+                    }
+                  }
+                ]
               }
             }
           }
@@ -3761,7 +4019,7 @@
                       "const": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/BatchResult"
                     },
                     "meta": {
                       "type": "object",
@@ -3842,6 +4100,16 @@
               }
             }
           },
+          "422": {
+            "description": "Batch envelope violates the schema, registered source or item limit; nothing is applied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Required server configuration or transactional storage unavailable.",
             "content": {
@@ -3859,7 +4127,30 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/EventBatch"
+              },
+              "example": {
+                "protocolVersion": 1,
+                "calendarId": "km-its@group.calendar.google.com",
+                "events": [
+                  {
+                    "eventId": "abc123def456",
+                    "updated": "2026-11-16T03:00:00.000Z",
+                    "status": "confirmed",
+                    "title": "Ministry meeting",
+                    "description": "Agenda",
+                    "location": "ITS Surabaya",
+                    "organization": "Ministry of Education",
+                    "allDay": false,
+                    "startAt": "2026-11-20T02:00:00.000Z",
+                    "endAt": "2026-11-20T04:00:00.000Z"
+                  },
+                  {
+                    "eventId": "removed789",
+                    "updated": "2026-11-16T03:05:00.000Z",
+                    "status": "cancelled"
+                  }
+                ]
               }
             }
           }
@@ -3953,7 +4244,71 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "archives (default), events or articles."
+          },
+          {
+            "name": "streamId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Archive only."
+          },
+          {
+            "name": "externalSubmissionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Archive only."
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Events only."
+          },
+          {
+            "name": "responseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Articles only."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
       }
     }
   },
@@ -4440,6 +4795,527 @@
           }
         ],
         "description": "Stream and folder must match ARCHIVE_SOURCE_CONFIG. Metadata driveFileId equals PDF driveFileId. Sequences are decimal strings; sourceCheckedAt is diagnostic, not ordering authority. SYNC_ERROR never proves source absence."
+      },
+      "EventItem": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,1024}$"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": {
+            "type": "string",
+            "description": "Up to EVENT_DESCRIPTION_MAX_CHARS (default 8000)."
+          },
+          "location": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          },
+          "organization": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          }
+        },
+        "required": [
+          "eventId",
+          "updated",
+          "status"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "confirmed"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "title",
+                "allDay",
+                "startAt",
+                "endAt"
+              ]
+            }
+          }
+        ],
+        "description": "Confirmed events need title, allDay, startAt and endAt (endAt >= startAt). Content on cancelled items is ignored."
+      },
+      "EventBatch": {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "const": 1
+          },
+          "calendarId": {
+            "type": "string",
+            "description": "Must equal EVENT_CALENDAR_ID."
+          },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/EventItem"
+            },
+            "description": "1 to EVENT_SYNC_MAX_ITEMS (default 50)."
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "calendarId",
+          "events"
+        ],
+        "additionalProperties": false,
+        "description": "Each item is ordered by its Calendar updated timestamp and committed separately."
+      },
+      "ArticleContent": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "summary": {
+            "type": "string",
+            "description": "Up to ARTICLE_SUMMARY_MAX_CHARS (default 1000)."
+          },
+          "category": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100
+          },
+          "ministry": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "authors": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "coverImage": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "driveFileId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,200}$"
+                  },
+                  "alt": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "driveFileId"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Markdown, up to ARTICLE_BODY_MAX_CHARS (default 50000)."
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "title",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleSubmission": {
+        "type": "object",
+        "properties": {
+          "responseId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,512}$"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "submitterEmail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 320
+          },
+          "article": {
+            "$ref": "#/components/schemas/ArticleContent"
+          }
+        },
+        "required": [
+          "responseId",
+          "submittedAt",
+          "article"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleBatch": {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "const": 1
+          },
+          "formId": {
+            "type": "string",
+            "description": "Must equal ARTICLE_FORM_ID."
+          },
+          "submissions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/ArticleSubmission"
+            },
+            "description": "1 to ARTICLE_SYNC_MAX_ITEMS (default 20)."
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "formId",
+          "submissions"
+        ],
+        "additionalProperties": false,
+        "description": "Submissions are stored unpublished; source updates never change the published copy."
+      },
+      "BatchResult": {
+        "type": "object",
+        "properties": {
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "eventId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "responseId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outcome": {
+                  "enum": [
+                    "applied",
+                    "unchanged",
+                    "stale",
+                    "conflict",
+                    "invalid"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "index",
+                "outcome"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "receivedAt",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "PublicEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "organization": {
+            "type": "string"
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "status": {
+            "enum": [
+              "UPCOMING",
+              "ONGOING",
+              "FINISHED"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "location",
+          "organization",
+          "allDay",
+          "startAt",
+          "endAt",
+          "status",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PublicArticle": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "ministry": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverImage": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "driveFileId": {
+                    "type": "string"
+                  },
+                  "alt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "driveFileId",
+                  "alt"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "body": {
+            "type": "string",
+            "description": "Detail only."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "category",
+          "ministry",
+          "authors",
+          "coverImage",
+          "publishedAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "EventUpdate": {
+        "type": "object",
+        "properties": {
+          "hidden": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hidden"
+        ],
+        "additionalProperties": false
+      },
+      "ArticleUpdate": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "resetToSource": {
+            "const": true
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "summary": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100
+          },
+          "ministry": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "authors": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "coverImage": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "driveFileId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,200}$"
+                  },
+                  "alt": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "driveFileId"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false,
+        "minProperties": 2,
+        "description": "revision plus either resetToSource: true alone or one or more content fields. 409 ARTICLE_CHANGED when revision is not current."
+      },
+      "ArticlePublish": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

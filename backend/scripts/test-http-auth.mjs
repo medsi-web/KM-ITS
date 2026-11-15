@@ -31,12 +31,13 @@ try {
   const origin = `http://127.0.0.1:${port}`;
   const password = randomBytes(32).toString("base64url");
   const ingestionSecret = randomBytes(32).toString("base64url");
+  const calendarId = "http-test-calendar@group.calendar.google.com";
+  const formId = "http-test-form";
   const env = {
     ...process.env, MONGODB_URI: replica.getUri(), MONGODB_DATABASE: "kmits_http_local_test", APP_ORIGIN: origin,
     APPS_SCRIPT_INGESTION_SECRET: ingestionSecret,
     ARCHIVE_SOURCE_CONFIG: JSON.stringify([{ streamId: "http-test-stream", folderId: "http-folder", ministryId: "http-ministry" }]),
-    EVENT_CALENDAR_ID: "http-test-calendar@group.calendar.google.com",
-    ARTICLE_FORM_ID: "http-test-form",
+    EVENT_CALENDAR_ID: calendarId, ARTICLE_FORM_ID: formId,
     DRIVE_SERVICE_ACCOUNT_EMAIL: "", DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY: "", DRIVE_PUBLIC_API_KEY: "",
     BOOTSTRAP_SUPER_ADMIN_USERNAME: "", BOOTSTRAP_SUPER_ADMIN_PASSWORD: "",
   };
@@ -81,13 +82,18 @@ try {
   const workflow = await runCollection("Auth.postman_collection.json", {
     baseUrl: origin, username: "http-owner", password, newPassword: randomBytes(32).toString("base64url"), ingestionSecret,
   });
+  const timeline = await runCollection("Timeline.postman_collection.json", { baseUrl: origin, username: "http-owner", password, ingestionSecret, calendarId });
+  const articles = await runCollection("Articles.postman_collection.json", { baseUrl: origin, username: "http-owner", password, ingestionSecret, formId });
   assert.equal((await store.accounts.findOne({ username: "http-admin" }))?.active, false);
   assert.equal(await store.sessions.countDocuments({}), 0);
   const archives = archiveCollections(database);
   assert.equal(await archives.archives.countDocuments({ sourceState: "VALID", manualHidden: false }), 1);
   assert.equal(await store.audit.countDocuments({ action: "archive.hidden" }), 1);
   assert.equal(await store.audit.countDocuments({ action: "archive.unhidden" }), 1);
-  console.log(`PASS: ${smoke} anonymous probes and ${workflow} real login/account/Archive workflow requests. Temporary database only.`);
+  assert.equal(await store.audit.countDocuments({ action: "event.hidden" }), 1);
+  assert.equal(await store.audit.countDocuments({ action: "article.published" }), 2);
+  assert.equal(await store.audit.countDocuments({ action: "article.unpublished" }), 1);
+  console.log(`PASS: ${smoke} anonymous probes, ${workflow} login/account/Archive, ${timeline} Timeline and ${articles} Articles workflow requests. Temporary database only.`);
 } finally {
   if (child?.pid && child.exitCode === null) {
     const ended = once(child, "exit"); child.kill(); await ended;

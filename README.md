@@ -3,13 +3,12 @@
 A pnpm workspace with one Next.js application in `frontend/` and a server-only
 `@kmits/backend` package. Both run in the same Next.js process.
 
-The API inventory contains **33 operations: 19 implemented and 14 reserved**.
-Implemented features include system health, local username/password admin access,
-account management, Archive ingestion, admin monitoring and manual visibility,
-sync logs, and public Archive reads/open redirects. Articles, Timeline, and their
-internal ingestion operations remain reserved and return `501` after applicable
-access and transport checks. Frontend pages are maintained separately; this
-backend work changes only the HTTP adapters under the frontend package.
+The API inventory contains **33 operations, all implemented**: system health,
+local username/password admin access, account management, Archive ingestion and
+publication, Timeline (Google Calendar) event sync and visibility, Article
+(Google Form) review and publication, and per-source sync logs. Frontend pages
+are maintained separately; this backend work changes only the HTTP adapters
+under the frontend package. Apps Script connectors are not part of this repository.
 
 ## Structure
 
@@ -28,6 +27,8 @@ frontend/
   public/              Website assets
 design/                Design references
 docs/archive.md        Archive specification
+docs/timeline.md       Timeline specification
+docs/articles.md       Article specification
 ```
 
 ## Setup
@@ -50,6 +51,8 @@ pnpm db:up
 pnpm auth:setup
 pnpm auth:bootstrap
 pnpm archives:setup
+pnpm timeline:setup
+pnpm articles:setup
 pnpm dev
 ```
 
@@ -57,6 +60,11 @@ Remove bootstrap credentials after provisioning. Existing installations must
 follow the [authentication migration guide](backend/src/modules/auth/README.md)
 and use `pnpm auth:migrate` with its documented mapping and confirmation arguments.
 No default account exists.
+
+Timeline needs `EVENT_CALENDAR_ID` and Articles need `ARTICLE_FORM_ID`; each
+setup command fails until its source ID is set. Batch sizes, text limits, page
+sizes and the request body limit are optional environment settings documented in
+`frontend/.env.example` and the [backend README](backend/README.md#configuration).
 
 Archive setup also needs registered source folders in `ARCHIVE_SOURCE_CONFIG`,
 an ingestion secret, an isolated Drive service account with Viewer access only
@@ -75,6 +83,8 @@ Run from the repository root when validation or deployment is intended:
 pnpm test
 pnpm test:integration
 pnpm test:archives
+pnpm test:timeline
+pnpm test:articles
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -84,7 +94,8 @@ pnpm api:check
 ```
 
 `build` typechecks the backend and builds the frontend. `lint` and `typecheck`
-cover both packages. `test:archives` runs the Archive Postman workflow.
+cover both packages. `test:archives`, `test:timeline` and `test:articles` run the Archive, Timeline and
+Article Postman workflows against a running server.
 `test:api` runs the [Postman collection](backend/postman/README.md) against a
 running server; `test:http` runs an isolated HTTP authentication workflow after
 a build.
