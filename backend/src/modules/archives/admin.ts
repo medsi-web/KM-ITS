@@ -1,21 +1,12 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
+import { readPagination } from "../../lib/pagination.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
 import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
 import { isArchiveVisible } from "./models.ts";
 import type { ArchiveRecord, ArchiveSyncLog } from "./models.ts";
 import { getArchiveStore } from "./store.ts";
 
-function pagination(url: URL) {
-  const number = (key: string, fallback: number, min: number, max: number) => {
-    const raw = url.searchParams.get(key);
-    const value = raw === null ? fallback : Number(raw);
-    if (raw !== null && !/^\d+$/.test(raw) || !Number.isSafeInteger(value) || value < min || value > max) {
-      throw new ApiError(400, "INVALID_PAGINATION", "Use limit 1–100 and a nonnegative integer offset.");
-    }
-    return value;
-  };
-  return { limit: number("limit", 25, 1, 100), offset: number("offset", 0, 0, 10000) };
-}
+const pagination = (url: URL) => readPagination(url, 25, 100);
 
 function archiveId(request: Request, mutation = false) {
   const parts = new URL(request.url).pathname.replace(/\/$/, "").split("/");

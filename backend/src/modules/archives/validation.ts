@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { payloadHash } from "../../lib/canonical.ts";
 import { ApiError } from "../../lib/http.ts";
 import type { ArchiveSnapshot } from "./models.ts";
 import { archiveSources, type ArchiveSource } from "./sources.ts";
@@ -18,12 +18,7 @@ function string(value: unknown, max: number, empty = false): string {
 }
 function id(value: unknown): string { const result = string(value, 200); if (!/^[A-Za-z0-9_-]+$/.test(result)) invalid(); return result; }
 export function decimal(value: unknown): string { if (typeof value !== "string" || !/^(0|[1-9][0-9]{0,99})$/.test(value)) invalid(); return value; }
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonical(item)]));
-  return value;
-}
-export function payloadHash(value: unknown): string { return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex"); }
+export { payloadHash };
 export function validateObservation(input: unknown): ArchiveObservation {
   const registrations = archiveSources();
   const value = object(input, ["protocolVersion", "streamId", "deliveryId", "scanSequence", "metadataFileId", "metadataDriveVersion", "observation", "sourceCheckedAt", "folderId", "diagnostics", "metadata", "pdf"]);
