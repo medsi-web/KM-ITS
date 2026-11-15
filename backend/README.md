@@ -97,9 +97,9 @@ If MongoDB stops while the server runs, API routes return
 Verified on 2026-11-16 against the Docker database (MongoDB 8.0.38) with a
 production build on `http://localhost:3000` and disposable databases:
 replica-set primary, setup and bootstrap, health/ready, Newman `KMITS` (33
-requests), `Auth` (35 requests) and `Archive` (17 requests), data persistence
-across a container restart, 503 while the database is stopped, and recovery
-after restart.
+requests), `Auth` (33), `Timeline` (20), `Articles` (23) and `Archive` (15),
+data persistence across a container restart, 503 while the database is stopped,
+and recovery after restart.
 
 ## Authentication
 

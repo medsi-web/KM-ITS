@@ -128,6 +128,12 @@ PATCH and publish fail with `409 ARTICLE_CHANGED` when `revision` is not the
 current draft revision. This guarantees that the admin publishes exactly the
 draft they reviewed, even if a source update or another admin changed it meanwhile.
 
+## Tests and verification
+
+Unit tests cover envelope and item validation, template defaults, configurable limits and canonical fingerprints. Replica-set integration tests cover setup guard, unpublished ingestion, ordering, retries, conflicts, draft follow/flag behaviour, published copy isolation, concurrent first inserts, HTTP authentication and logging, review queue, revision conflicts, edit/reset/publish/unpublish, audit and both roles, configurable pagination and per-source sync logs. Newman workflow `Articles.postman_collection.json` runs in `pnpm test:http` and against the Docker database.
+
+Last verified on 2026-11-16 on branch `dev_be`: `pnpm test`, `pnpm test:integration`, `pnpm test:http`, `pnpm api:check`, `pnpm lint`, `pnpm typecheck` and `pnpm build` passed, plus the Docker MongoDB 8.0 end-to-end run. No live Google Calendar, Google Form or Apps Script was used.
+
 ## Setup
 
 Set `ARTICLE_FORM_ID`, then run `pnpm articles:setup`. The command validates the

@@ -139,6 +139,12 @@ Origin and the session CSRF token.
   record with the actor and before/after state. Unhiding never shows a cancelled event.
 - `GET /api/admin/sync-logs?source=events` reads event sync logs. `eventId` filters by event.
 
+## Tests and verification
+
+Unit tests cover envelope and item validation, configurable limits, offsets and derived status. Replica-set integration tests cover setup guard, ordering, retries, conflicts, stale copies, cancellation, manual hiding across updates, per-item invalid results, concurrent first inserts, HTTP authentication and logging, public window/status filters, configurable pagination, admin CSRF, audit and both roles, and per-source sync logs. Newman workflow `Timeline.postman_collection.json` runs in `pnpm test:http` and against the Docker database.
+
+Last verified on 2026-11-16 on branch `dev_be`: `pnpm test`, `pnpm test:integration`, `pnpm test:http`, `pnpm api:check`, `pnpm lint`, `pnpm typecheck` and `pnpm build` passed, plus the Docker MongoDB 8.0 end-to-end run. No live Google Calendar, Google Form or Apps Script was used.
+
 ## Setup
 
 Set `EVENT_CALENDAR_ID`, then run `pnpm timeline:setup`. The command validates the
