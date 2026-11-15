@@ -20,6 +20,7 @@
     "auth:migrate": "pnpm --filter @kmits/backend auth:migrate",
     "archives:setup": "pnpm --filter @kmits/backend archives:setup",
     "timeline:setup": "pnpm --filter @kmits/backend timeline:setup",
+    "articles:setup": "pnpm --filter @kmits/backend articles:setup",
     "test:archives": "pnpm --filter @kmits/backend test:archives",
     "api:generate": "pnpm --filter @kmits/backend api:generate",
     "api:check": "pnpm --filter @kmits/backend api:check",
