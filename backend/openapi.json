@@ -3869,7 +3869,7 @@
     "/api/admin/sync-logs": {
       "get": {
         "operationId": "sync.logs",
-        "summary": "Inspect Archive synchronization outcomes",
+        "summary": "Inspect synchronization outcomes for archives, events or articles",
         "tags": [
           "Integration"
         ],
@@ -3881,7 +3881,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Inspect Archive synchronization outcomes",
+            "description": "Inspect synchronization outcomes for archives, events or articles",
             "content": {
               "application/json": {
                 "schema": {

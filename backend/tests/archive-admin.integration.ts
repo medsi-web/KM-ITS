@@ -7,7 +7,8 @@ import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
 import { csrfForSession, opaqueToken, tokenHash } from "../src/modules/auth/security.ts";
 import { hashPassword } from "../src/modules/auth/password.ts";
 import { archiveCollections, initializeArchives } from "../src/modules/archives/store.ts";
-import { archivesAdminList, archivesAdminDetail, archivesPublish, archivesUnpublish, archiveSyncLogs } from "../src/modules/archives/admin.ts";
+import { archivesAdminList, archivesAdminDetail, archivesPublish, archivesUnpublish } from "../src/modules/archives/admin.ts";
+import { syncLogs as archiveSyncLogs } from "../src/modules/sync/handlers.ts";
 import type { ArchiveRecord } from "../src/modules/archives/models.ts";
 
 let replica: MongoMemoryReplSet;

@@ -7,6 +7,7 @@ import { ingestArticles } from "../src/modules/articles/ingestion.ts";
 import { articlesDetail, articlesList } from "../src/modules/articles/public.ts";
 import { articleCollections, initializeArticles } from "../src/modules/articles/store.ts";
 import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
+import { syncLogs } from "../src/modules/sync/handlers.ts";
 import { adminRequest, adminSessions, data, ORIGIN } from "./fixtures/admin.ts";
 import { articleBatch, FORM, submission } from "./fixtures/articles.ts";
 
@@ -139,4 +140,12 @@ test("public list pagination is configurable", async () => {
   assert.equal((await articlesList(new Request(`${ORIGIN}/api/articles?search=x`))).status, 400);
   delete process.env.ARTICLE_PAGE_MAX_LIMIT;
   assert.equal((await publicDetail("not-a-uuid")).status, 404);
+});
+
+test("article sync logs are readable through the shared endpoint", async () => {
+  const response = await syncLogs(adminRequest("/api/admin/sync-logs?source=articles&responseId=r1", { token: tokens.admin }));
+  const logs = await data<{ source: string; items: { responseId: string }[]; total: number }>(response);
+  assert.equal(logs.source, "articles");
+  assert.equal(logs.total, 3);
+  assert.equal((await syncLogs(adminRequest("/api/admin/sync-logs?source=articles&eventId=x", { token: tokens.admin }))).status, 400);
 });

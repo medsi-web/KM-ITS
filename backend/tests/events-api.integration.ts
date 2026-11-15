@@ -7,6 +7,7 @@ import { eventsAdminDetail, eventsAdminList, eventsUpdate } from "../src/modules
 import { ingestEvents } from "../src/modules/events/ingestion.ts";
 import { eventsDetail, eventsList } from "../src/modules/events/public.ts";
 import { eventCollections, initializeEvents } from "../src/modules/events/store.ts";
+import { syncLogs } from "../src/modules/sync/handlers.ts";
 import { adminRequest, adminSessions, data, ORIGIN } from "./fixtures/admin.ts";
 import { batch, CALENDAR, calendarEvent } from "./fixtures/events.ts";
 
@@ -100,4 +101,15 @@ test("admin monitoring and manual hiding with CSRF, audit and both roles", async
   assert.deepEqual(audits.map(entry => entry.action), ["event.hidden", "event.unhidden"]);
   assert.equal((audits[1].changes?.actor as { role: string }).role, "SUPER_ADMIN");
   assert.equal((await eventsUpdate(adminRequest("/api/admin/events/unknown", { token: tokens.admin, method: "PATCH", body: { hidden: true } }))).status, 404);
+});
+
+test("sync logs are readable per source with source-specific filters", async () => {
+  const read = (query: string) => syncLogs(adminRequest(`/api/admin/sync-logs${query}`, { token: tokens.admin }));
+  const logs = await data<{ source: string; items: { eventId: string; outcome: string }[]; total: number }>(await read("?source=events&eventId=cancelled"));
+  assert.equal(logs.source, "events");
+  assert.deepEqual(logs.items.map(item => item.outcome), ["applied", "applied"]);
+  assert.ok(logs.items.every(item => item.eventId === "cancelled"));
+  assert.equal((await read("?source=events&streamId=x")).status, 400);
+  assert.equal((await read("?source=calendar")).status, 400);
+  assert.equal((await syncLogs(adminRequest("/api/admin/sync-logs?source=events"))).status, 401);
 });

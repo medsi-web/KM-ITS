@@ -87,9 +87,8 @@ function syncLogView(log: ArchiveSyncLog) {
     observation: log.observation, outcome: log.outcome, reason: log.reason ?? null };
 }
 
-export const archiveSyncLogs = defineHandler("sync.logs", async (request) => {
-  await requireAdmin(request, "ADMIN");
-  const url = new URL(request.url);
+// Archive branch of GET /api/admin/sync-logs; the caller has authorized the admin.
+export async function archiveSyncLogPage(url: URL) {
   const { limit, offset } = pagination(url);
   const filter: { streamId?: string; externalSubmissionId?: string } = {};
   for (const key of ["streamId", "externalSubmissionId"] as const) {
@@ -105,4 +104,4 @@ export const archiveSyncLogs = defineHandler("sync.logs", async (request) => {
     store.syncLogs.countDocuments(filter),
   ]);
   return { items: records.map(syncLogView), total, limit, offset };
-});
+}
