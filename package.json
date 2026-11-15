@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @kmits/frontend dev",
+    "db:up": "docker compose up -d --wait mongo",
+    "db:down": "docker compose stop mongo",
+    "db:logs": "docker compose logs -f mongo",
     "build": "pnpm --filter @kmits/backend typecheck && pnpm --filter @kmits/frontend build",
     "start": "pnpm --filter @kmits/frontend start",
     "lint": "pnpm -r run lint",
