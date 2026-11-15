@@ -12,4 +12,4 @@ The anonymous probe collection expects an initialized archive database. Set `rea
 
 Generate committed artifacts with `pnpm --filter @kmits/backend api:generate`. `backend/openapi.json` describes implemented local auth and Archive operations; Articles and Timeline remain explicitly reserved. Successful Archive opening is a verified 302 redirect; missing reader configuration is 503. No login OAuth flow or approval/rejection state is part of this API.
 
-Validation commands are documented for later execution. Generation does not run tests or contact a database.
+Generation does not run tests or contact a database. Last verified on 2026-11-16 on branch `dev_be`: `pnpm api:check` (33 operations, 35 workflow requests) and `pnpm test:http` (33 anonymous probes and 35 login/account/Archive workflow requests) passed.

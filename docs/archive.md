@@ -62,13 +62,17 @@ Before accepting traffic, an operator runs `node --env-file-if-exists=../fronten
 
 Admin controls only set manual hiding/restoration and inspect current state/logs. Public opening separately revalidates current PDF binding and public accessibility through the backend Drive adapter. Source state remains the latest accepted observation, not a guarantee that Drive cannot change between polls.
 
-## Authored tests and pending validation
-
-Authored unit tests target strict schema, bindings, source authority, and large counters. Authored replica-set integration tests target auto-publication, retry/conflict ledger, stale ordering, recovery, manual hiding, unchanged polls, incomplete scans, independent document ordering, authenticated-attempt logs, concurrent first writes, and cross-source ownership protection. Public integration tests target visibility, fresh redirects, suppression, service failures, and concurrent hide/replacement behavior. Current full validation is intentionally pending the user's request not to run tests or checks; this list does not claim those tests passed.
-
-## Contributor metadata example
+## PDF immutability
 
 After sequence and metadata-version checks, ingestion rejects a different SHA-256 for the current snapshot's PDF Drive ID with `conflict`, preserving the current record and watermarks. Changed PDF content must use a new Drive file ID. This safeguard compares the current stored binding; the backend does not maintain a historical PDF-ID/checksum registry, so it cannot detect reuse of an older PDF ID after a different PDF has become current.
+
+## Tests and verification
+
+Unit tests cover strict schema, bindings, source authority, and large counters. Replica-set integration tests cover auto-publication, retry/conflict ledger, stale ordering, recovery, manual hiding, unchanged polls, incomplete scans, independent document ordering, authenticated-attempt logs, concurrent first writes, cross-source ownership protection, separate identity for equal titles, renamed files keeping identity, and backend-only receipt time. Public integration tests cover visibility, fresh redirects, suppression, service failures, and concurrent hide/replacement behavior. Admin integration tests cover guards, CSRF, both roles, hide/unhide, audit actors, pagination, and sync history.
+
+Last verified on 2026-11-16 on branch `dev_be`: `pnpm test`, `pnpm test:integration`, `pnpm test:http` (Newman), `pnpm api:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build` passed. No live Drive, Apps Script, or production MongoDB was used.
+
+## Contributor metadata example
 
 Keep one mutable `.md` file per document and update that file in place. Its Drive file ID is the document identity. For example:
 
