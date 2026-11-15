@@ -41,9 +41,12 @@ Copy-Item frontend/.env.example frontend/.env.local
 ```
 
 Configure a MongoDB replica set or Atlas, `APP_ORIGIN`, and private bootstrap
-credentials in `frontend/.env.local`. For a fresh installation:
+credentials in `frontend/.env.local`. For local development, start MongoDB in
+Docker with `pnpm db:up`; see [local database](backend/README.md#local-database-docker).
+For a fresh installation:
 
 ```powershell
+pnpm db:up
 pnpm auth:setup
 pnpm auth:bootstrap
 pnpm archives:setup

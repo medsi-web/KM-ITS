@@ -41,12 +41,58 @@ pnpm archives:setup
 pnpm dev
 ```
 
+`pnpm archives:setup` exits with `ARCHIVE_SOURCES_NOT_CONFIGURED` until
+`ARCHIVE_SOURCE_CONFIG` lists at least one registered folder. This is intended:
+Archive ingestion fails closed without source registrations.
+
 Remove bootstrap credentials after provisioning. There is no default account or
 authorization bypass. For existing installations, follow the full
 [authentication and migration guide](src/modules/auth/README.md) before invoking
 `pnpm auth:migrate` with its mapping and explicit migration confirmation. Stop
 application instances and retain a verified backup as that guide describes.
 Restart the host after environment changes.
+
+## Local database (Docker)
+
+Development runs MongoDB 8.0 in Docker and Next.js on the host with `pnpm dev`.
+The root `compose.yaml` starts a single-node replica set `rs0`, which backend
+transactions require. The port is bound to `127.0.0.1:27017` only, and this
+development database has no password. Do not reuse this configuration for a
+deployed server: production needs MongoDB authentication, a replica-set
+keyfile and scheduled backups.
+
+```powershell
+pnpm db:up      # start and wait until the node is PRIMARY
+pnpm db:logs    # follow MongoDB logs
+pnpm db:down    # stop; data is kept in the kmits_mongo-data volume
+```
+
+Use this URI in `frontend/.env.local`:
+
+```text
+MONGODB_URI=mongodb://127.0.0.1:27017/?directConnection=true
+MONGODB_DATABASE=kmits
+```
+
+The replica-set member is registered as `mongo:27017` inside Docker.
+`directConnection=true` lets host clients connect without resolving that name.
+A future app container uses `mongodb://mongo:27017/?directConnection=true`.
+
+To delete all local data, run `docker compose down -v`. This permanently removes
+the volume, including accounts and Archive records; rerun the setup commands
+afterwards. If port 27017 is already used by another MongoDB, stop that service
+or change the host port in `compose.yaml` and the URI together.
+
+If MongoDB stops while the server runs, API routes return
+`503 DATABASE_UNAVAILABLE` and `/api/ready` returns 503. They recover after
+`pnpm db:up` without restarting Next.js.
+
+Verified on 2026-11-16 against the Docker database (MongoDB 8.0.38) with a
+production build on `http://localhost:3000` and disposable databases:
+replica-set primary, setup and bootstrap, health/ready, Newman `KMITS` (33
+requests), `Auth` (35 requests) and `Archive` (17 requests), data persistence
+across a container restart, 503 while the database is stopped, and recovery
+after restart.
 
 ## Authentication
 
