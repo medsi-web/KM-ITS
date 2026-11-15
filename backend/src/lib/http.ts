@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { MongoNetworkError, MongoNotConnectedError, MongoServerSelectionError, MongoTopologyClosedError } from "mongodb";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -24,6 +25,13 @@ export function jsonResponse(
 
 type Action = (request: Request) => Promise<unknown> | unknown;
 
+// A pooled client stays cached after its first connection, so a database that
+// goes down later surfaces as driver connectivity errors, not ApiError.
+function isDatabaseUnavailable(error: unknown): boolean {
+  return error instanceof MongoServerSelectionError || error instanceof MongoNetworkError
+    || error instanceof MongoTopologyClosedError || error instanceof MongoNotConnectedError;
+}
+
 export function defineHandler(operation: string, action: Action) {
   return async function handle(request: Request): Promise<Response> {
     // Access request-time data outside the error boundary so Next.js can
@@ -42,6 +50,11 @@ export function defineHandler(operation: string, action: Action) {
       if (error instanceof ApiError) {
         return jsonResponse(requestId, error.status, {
           error: { code: error.code, message: error.message },
+        });
+      }
+      if (isDatabaseUnavailable(error)) {
+        return jsonResponse(requestId, 503, {
+          error: { code: "DATABASE_UNAVAILABLE", message: "MongoDB is unavailable." },
         });
       }
       // Never log request bodies, credentials, database URIs, or stacks.

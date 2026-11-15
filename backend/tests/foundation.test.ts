@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
+import { MongoNetworkError, MongoNotConnectedError, MongoServerSelectionError, MongoTopologyClosedError } from "mongodb";
 import { endpoints } from "../src/contracts/endpoints.ts";
 import type { EndpointId } from "../src/contracts/endpoints.ts";
 import { requireIngestionSecret } from "../src/integrations/apps-script.ts";
@@ -84,6 +85,21 @@ test("unexpected errors expose only a generic response and safe diagnostic field
   assert.ok(!(await response.text()).includes("secret-database-uri"));
   assert.equal(log.mock.callCount(), 1);
   assert.ok(!JSON.stringify(log.mock.calls).includes("secret-database-uri"));
+});
+
+test("database connectivity loss after connection maps to 503, not 500", async () => {
+  const log = mock.method(console, "error", () => {});
+  // Driver errors as raised once a cached client loses its server.
+  const failures = [MongoServerSelectionError, MongoNetworkError, MongoTopologyClosedError, MongoNotConnectedError]
+    .map(type => Object.create(type.prototype) as Error);
+  for (const failure of failures) {
+    const response = await defineHandler("test.database", () => { throw failure; })(new Request("http://localhost/api/test"));
+    assert.equal(response.status, 503);
+    assert.equal(((await response.json()) as { error: { code: string } }).error.code, "DATABASE_UNAVAILABLE");
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  }
+  assert.equal(log.mock.callCount(), 0);
+  log.mock.restore();
 });
 
 test("ingestion stays disabled for absent or short configuration", () => {
