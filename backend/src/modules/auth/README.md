@@ -12,6 +12,19 @@ A super admin creates an account using `{username,name,role?}`. The default role
 
 The shared access transaction fence serializes login issuance, password change, reset, role change and deactivation. Password verification happens before the transaction, then the exact hash and authVersion are checked under the fence. This prevents an old password verified concurrently with a reset from issuing a usable session after the reset. All access changes revoke existing sessions.
 
+## Cabinet handover
+
+When the cabinet changes, the outgoing super admin transfers access without sharing personal credentials:
+
+1. Create the successor account with `POST /api/admin/accounts` and `{username,name}`.
+2. Send the one-time temporary password to the successor through a private channel.
+3. The successor signs in, changes the temporary password with `POST /api/auth/password`, then signs in again.
+4. Promote the successor with `PATCH /api/admin/accounts/{id}` and `{role:"SUPER_ADMIN"}`. Promotion returns `409 SUCCESSOR_NOT_READY` until the successor is active and has a permanent password.
+5. The outgoing super admin deactivates their own account with `PATCH /api/admin/accounts/{id}` and `{active:false}`. Removing the last ready super admin returns `409 LAST_SUPER_ADMIN`, so the system always keeps one usable super admin.
+6. Deactivation revokes every session of the outgoing account. Deactivate or reset outgoing ADMIN accounts the same way.
+
+Record the handover date and the new super admin username in the cabinet knowledge-transfer notes. Never write passwords in those notes.
+
 ## Migrating an existing installation
 
 Legacy accounts and legacy sessions fail closed. Setup refuses obsolete identity indexes or unmigrated records; it never drops data. Do not run old and new application versions together. Stop all application instances and take a verified database backup before migration. Retain that backup for rollback; restoring it requires reverting the application version and rotating/revoking all old sessions before reopening access.
