@@ -2,11 +2,10 @@ import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 import { MongoNetworkError, MongoNotConnectedError, MongoServerSelectionError, MongoTopologyClosedError } from "mongodb";
 import { endpoints } from "../src/contracts/endpoints.ts";
-import type { EndpointId } from "../src/contracts/endpoints.ts";
 import { requireIngestionSecret } from "../src/integrations/apps-script.ts";
 import { pingDatabase } from "../src/lib/database.ts";
 import { ApiError, defineHandler, MAX_JSON_BYTES, readJsonObject } from "../src/lib/http.ts";
-import { reservedEndpoint } from "../src/lib/reserved-endpoint.ts";
+import { syncArticles, syncEvents } from "../src/modules/sync/handlers.ts";
 import { createReadinessHandler, health } from "../src/modules/system/handlers.ts";
 
 const originalEnvironment = { ...process.env };
@@ -133,25 +132,15 @@ test("JSON transport checks media type and enforces actual bytes even without Co
   await assert.rejects(readJsonObject(request(JSON.stringify({ text: "é".repeat(MAX_JSON_BYTES) }))), apiError(413, "PAYLOAD_TOO_LARGE"));
 });
 
-test("every reserved domain operation fails closed without returning or storing feature data", async () => {
-  process.env.APPS_SCRIPT_INGESTION_SECRET = testSecret;
-  for (const id of Object.keys(endpoints) as EndpointId[]) {
-    const endpoint = endpoints[id];
-    if ("implemented" in endpoint && endpoint.implemented) continue;
-    const response = await reservedEndpoint(id)(request("{}", { authorization: `Bearer ${testSecret}` }));
-    const body = await responseBody(response);
-    const protectedRoute = endpoint.access === "admin" || endpoint.access === "super-admin";
-    assert.equal(response.status, protectedRoute ? 401 : 501, id);
-    assert.equal(body.error.code, protectedRoute ? "UNAUTHENTICATED" : "FEATURE_NOT_IMPLEMENTED", id);
-    assert.equal(body.success, false, id);
-    assert.equal("data" in body, false, id);
-  }
+test("every inventory operation is implemented; nothing is left as a reserved placeholder", () => {
+  for (const [id, endpoint] of Object.entries(endpoints)) assert.equal("implemented" in endpoint && endpoint.implemented, true, id);
 });
 
-test("internal endpoints authenticate before parsing and never acknowledge ingestion", async () => {
+test("internal endpoints authenticate before parsing the body or touching storage", async () => {
+  delete process.env.MONGODB_URI;
   process.env.APPS_SCRIPT_INGESTION_SECRET = testSecret;
-  const handler = reservedEndpoint("sync.articles");
-  assert.equal((await handler(request("{broken"))).status, 401);
-  assert.equal((await handler(request("{broken", { authorization: `Bearer ${testSecret}` }))).status, 400);
-  assert.equal((await handler(request("{}", { authorization: `Bearer ${testSecret}` }))).status, 501);
+  for (const handler of [syncEvents, syncArticles]) {
+    assert.equal((await handler(request("{broken"))).status, 401);
+    assert.equal((await handler(request("{}", { authorization: "Bearer wrong" }))).status, 401);
+  }
 });

@@ -15,6 +15,7 @@ import { bootstrapSuperAdmin } from "../src/modules/auth/identity.ts";
 import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
 import { initializeArchives, archiveCollections } from "../src/modules/archives/store.ts";
 import { initializeEvents } from "../src/modules/events/store.ts";
+import { initializeArticles } from "../src/modules/articles/store.ts";
 
 let replica;
 let child;
@@ -35,6 +36,7 @@ try {
     APPS_SCRIPT_INGESTION_SECRET: ingestionSecret,
     ARCHIVE_SOURCE_CONFIG: JSON.stringify([{ streamId: "http-test-stream", folderId: "http-folder", ministryId: "http-ministry" }]),
     EVENT_CALENDAR_ID: "http-test-calendar@group.calendar.google.com",
+    ARTICLE_FORM_ID: "http-test-form",
     DRIVE_SERVICE_ACCOUNT_EMAIL: "", DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY: "", DRIVE_PUBLIC_API_KEY: "",
     BOOTSTRAP_SUPER_ADMIN_USERNAME: "", BOOTSTRAP_SUPER_ADMIN_PASSWORD: "",
   };
@@ -43,6 +45,7 @@ try {
   await initializeAuth(database);
   await initializeArchives(database);
   await initializeEvents(database);
+  await initializeArticles(database);
   const store = authCollections(database);
   await bootstrapSuperAdmin(store, "http-owner", password);
   child = spawn(process.execPath, [fileURLToPath(new URL("../../frontend/node_modules/next/dist/bin/next", import.meta.url)), "start", "--hostname", "127.0.0.1", "--port", String(port)], {

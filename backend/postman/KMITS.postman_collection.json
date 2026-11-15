@@ -580,7 +580,7 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Expected status\", () => pm.response.to.have.status(501));"
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));"
             ]
           }
         }
@@ -603,7 +603,7 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Expected status\", () => pm.response.to.have.status(501));"
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(404));"
             ]
           }
         }

@@ -1072,59 +1072,6 @@
       ]
     },
     {
-      "name": "Unsupported article remains explicit",
-      "protocolProfileBehavior": {
-        "followRedirects": false,
-        "disableCookies": true
-      },
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/articles",
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"Expected status\", () => pm.response.to.have.status(501));",
-              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Unsupported protected article",
-      "protocolProfileBehavior": {
-        "followRedirects": false,
-        "disableCookies": true
-      },
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/admin/articles",
-        "header": [
-          {
-            "key": "Cookie",
-            "value": "{{sessionCookie}}"
-          }
-        ]
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"Expected status\", () => pm.response.to.have.status(501));",
-              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"FEATURE_NOT_IMPLEMENTED\"));"
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "Disable test account",
       "protocolProfileBehavior": {
         "followRedirects": false,

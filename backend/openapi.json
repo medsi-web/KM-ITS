@@ -2063,11 +2063,53 @@
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [],
         "responses": {
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "200": {
+            "description": "List published articles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2087,9 +2129,51 @@
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [],
         "responses": {
+          "200": {
+            "description": "Read a published article",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "404": {
             "description": "Record missing or not publicly visible.",
             "content": {
@@ -2100,8 +2184,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2126,17 +2210,59 @@
     "/api/admin/articles": {
       "get": {
         "operationId": "articles.adminList",
-        "summary": "List submitted articles",
+        "summary": "List submitted articles and the review queue",
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "List submitted articles and the review queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing, expired or revoked session.",
             "content": {
@@ -2157,8 +2283,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2174,17 +2300,59 @@
     "/api/admin/articles/{id}": {
       "get": {
         "operationId": "articles.adminDetail",
-        "summary": "Inspect an article draft",
+        "summary": "Inspect source, draft and published versions",
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Inspect source, draft and published versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "401": {
             "description": "Missing, expired or revoked session.",
             "content": {
@@ -2215,8 +2383,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2239,17 +2407,59 @@
       },
       "patch": {
         "operationId": "articles.update",
-        "summary": "Edit an article draft",
+        "summary": "Edit the draft or reset it to the source",
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Edit the draft or reset it to the source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
@@ -2320,8 +2530,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2363,17 +2573,59 @@
     "/api/admin/articles/{id}/publish": {
       "post": {
         "operationId": "articles.publish",
-        "summary": "Publish an article",
+        "summary": "Publish the reviewed draft revision",
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Publish the reviewed draft revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
@@ -2444,8 +2696,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2487,17 +2739,59 @@
     "/api/admin/articles/{id}/unpublish": {
       "post": {
         "operationId": "articles.unpublish",
-        "summary": "Hide an article",
+        "summary": "Hide an article from the public",
         "tags": [
           "Articles"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "adminCookie": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Hide an article from the public",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
@@ -2568,8 +2862,8 @@
               }
             }
           },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
             "content": {
               "application/json": {
                 "schema": {
