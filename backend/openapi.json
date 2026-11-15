@@ -3203,17 +3203,59 @@
     "/api/internal/sync/events": {
       "post": {
         "operationId": "sync.events",
-        "summary": "Receive Google Calendar changes",
+        "summary": "Receive ordered, idempotent Google Calendar event batches",
         "tags": [
           "Integration"
         ],
-        "x-implementation-status": "reserved",
+        "x-implementation-status": "implemented",
         "security": [
           {
             "integrationBearer": []
           }
         ],
         "responses": {
+          "200": {
+            "description": "Receive ordered, idempotent Google Calendar event batches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid input, conflict, oversized body or unsupported media type.",
             "content": {
@@ -3256,16 +3298,6 @@
           },
           "415": {
             "description": "Invalid input, conflict, oversized body or unsupported media type.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Reserved feature; no domain mutation.",
             "content": {
               "application/json": {
                 "schema": {
