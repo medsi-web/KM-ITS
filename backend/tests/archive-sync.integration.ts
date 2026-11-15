@@ -35,7 +35,8 @@ test("auto-publish, retry ledger, suppression recovery, sequencing and manual hi
   assert.equal((await ingestArchive(observation("0", "another"))).outcome, "applied");
   assert.equal(await store.archives.countDocuments(), 2);
   await assert.rejects(ingestArchive({ ...observation("6"), metadata: {} }));
-  assert.equal(await store.syncLogs.countDocuments(), 11);
+  // One log per ingestion call above, including the rejected invalid payload.
+  assert.equal(await store.syncLogs.countDocuments(), 10);
 });
 test("scan failures reserve delivery identity and lower versions conflict without state changes", async () => {
   const input = observation("100", "ledger-check");
@@ -69,6 +70,30 @@ test("current PDF identity rejects changed content and accepts a new PDF identit
   replacement.pdf.sha256 = "b".repeat(64);
   assert.equal((await ingestArchive(replacement)).outcome, "applied");
   assert.equal((await store.archives.findOne({ externalSubmissionId: "pdf-immutability" }))!.snapshot!.pdf.driveFileId, "replacement-pdf");
+});
+test("identity follows metadata file ID, not titles or names, and receipt time comes from the backend", async () => {
+  const store = archiveCollections(await getDatabase());
+  // Same title and authors under two metadata files stay separate documents.
+  assert.equal((await ingestArchive(observation("300", "same-title-a"))).outcome, "applied");
+  // Every distinct file observation needs its own stream sequence.
+  assert.equal((await ingestArchive(observation("310", "same-title-b"))).outcome, "applied");
+  const twins = await store.archives.find({ externalSubmissionId: { $in: ["same-title-a", "same-title-b"] } }).toArray();
+  assert.equal(twins.length, 2);
+  assert.notEqual(twins[0]._id, twins[1]._id);
+  // Renaming files without changing the metadata ID updates the same record.
+  const original = (await store.archives.findOne({ externalSubmissionId: "same-title-a" }))!;
+  const renamed = observation("301", "same-title-a");
+  (renamed.pdf as Record<string, unknown>).name = "renamed-report.pdf";
+  assert.equal((await ingestArchive(renamed)).outcome, "applied");
+  const updated = (await store.archives.findOne({ externalSubmissionId: "same-title-a" }))!;
+  assert.equal(updated._id, original._id);
+  assert.equal(updated.snapshot!.pdf.name, "renamed-report.pdf");
+  // Payload-supplied receipt time is rejected; the backend clock is recorded.
+  await assert.rejects(ingestArchive({ ...observation("302", "same-title-a"), receivedAt: "2000-01-01T00:00:00Z" }));
+  const receivedAt = new Date("2026-11-16T03:00:00Z");
+  const result = await ingestArchive(observation("303", "same-title-a"), receivedAt);
+  assert.equal(result.receivedAt, receivedAt.toISOString());
+  assert.equal((await store.archives.findOne({ externalSubmissionId: "same-title-a" }))!.lastReceivedAt.toISOString(), receivedAt.toISOString());
 });
 test("concurrent first deliveries and cross-source claims never fork identity", async () => {
   const input = observation("20", "concurrent");
