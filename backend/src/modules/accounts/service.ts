@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ApiError } from "../../lib/http.ts";
+import { readPagination } from "../../lib/pagination.ts";
+import { UUID_PATTERN } from "../../lib/request.ts";
 import { hashPassword, normalizedUsername, temporaryPassword } from "../auth/password.ts";
 import type { AdminAccount, AdminRole } from "../auth/models.ts";
 import { publicAccount } from "../auth/models.ts";
@@ -19,12 +21,15 @@ function accountName(value: unknown): string {
   }
   return value.trim();
 }
+function accountRole(value: unknown): AdminRole {
+  if (value !== "ADMIN" && value !== "SUPER_ADMIN") throw new ApiError(400, "INVALID_ACCOUNT_INPUT", "Unsupported account role.");
+  return value;
+}
 
 export async function createAccount(store: AuthStore, actor: AdminContext, body: Record<string, unknown>) {
   checkFields(body, ["username", "name", "role"]);
   const username = normalizedUsername(body.username);
-  if (body.role !== undefined && body.role !== "ADMIN" && body.role !== "SUPER_ADMIN") throw new ApiError(400, "INVALID_ACCOUNT_INPUT", "Unsupported account role.");
-  const role = (body.role ?? "ADMIN") as AdminRole;
+  const role = body.role === undefined ? "ADMIN" : accountRole(body.role);
   const password = temporaryPassword();
   const passwordHash = await hashPassword(password);
   const name = accountName(body.name);
@@ -42,7 +47,7 @@ export async function createAccount(store: AuthStore, actor: AdminContext, body:
 }
 
 export async function updateAccount(store: AuthStore, actor: AdminContext, id: string, body: Record<string, unknown>) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+  if (!UUID_PATTERN.test(id)) {
     throw new ApiError(400, "INVALID_ACCOUNT_ID", "Account ID must be a UUID.");
   }
   checkFields(body, ["name", "active", "role"]);
@@ -52,10 +57,7 @@ export async function updateAccount(store: AuthStore, actor: AdminContext, id: s
     if (typeof body.active !== "boolean") throw new ApiError(400, "INVALID_ACCOUNT_INPUT", "active must be a boolean.");
     patch.active = body.active;
   }
-  if ("role" in body) {
-    if (body.role !== "ADMIN" && body.role !== "SUPER_ADMIN") throw new ApiError(400, "INVALID_ACCOUNT_INPUT", "Unsupported account role.");
-    patch.role = body.role as AdminRole;
-  }
+  if ("role" in body) patch.role = accountRole(body.role);
   return accessTransaction(store, async (transaction) => {
     await assertCurrentActor(store, actor, transaction);
     const target = await store.accounts.findOne({ _id: id }, { session: transaction });
@@ -86,11 +88,7 @@ export async function updateAccount(store: AuthStore, actor: AdminContext, id: s
 }
 
 export async function listAccounts(store: AuthStore, url: URL) {
-  const limit = Number(url.searchParams.get("limit") ?? 50);
-  const offset = Number(url.searchParams.get("offset") ?? 0);
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0 || offset > 10000) {
-    throw new ApiError(400, "INVALID_PAGINATION", "Use limit 1–100 and offset 0–10000.");
-  }
+  const { limit, offset } = readPagination(url, 50, 100);
   const items = await store.accounts.find({}).sort({ createdAt: 1, _id: 1 }).skip(offset).limit(limit).toArray();
   return { items: items.map(publicAccount), limit, offset };
 }
