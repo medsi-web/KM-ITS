@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Footer from "../_components/Footer";
 import Navbar from "../_components/Navbar";
 import Batik from "./_components/Batik";
 
@@ -12,6 +13,7 @@ export default function KnowledgeLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <Footer />
     </>
   );
 }
