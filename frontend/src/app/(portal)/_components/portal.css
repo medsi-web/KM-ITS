@@ -44,3 +44,115 @@
   font-weight: 700;
   line-height: normal;
 }
+
+/* Homepage cards: one link per card, text and badge included. */
+.pf-card {
+  position: absolute;
+  inset: 0;
+  display: block;
+  /* Only the static hit shape takes the pointer, so overlapping cards and
+     the batik band behind them stay unaffected. */
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.pf-card * {
+  pointer-events: none;
+}
+
+.pf-card .pf-card-hit {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.pf-card-body {
+  position: absolute;
+  inset: 0;
+  transform-origin: var(--card-origin, 50% 50%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-card-bg {
+  transition: filter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-card:focus-visible .pf-card-hit {
+  outline: 2px solid var(--color-sky);
+  outline-offset: 4px;
+  border-radius: calc(var(--u) * 8);
+}
+
+.pf-card:active .pf-card-body {
+  transform: translateY(calc(var(--u) * -2)) scale(1.02);
+}
+
+@media (hover: hover) {
+  .pf-card:hover .pf-card-body {
+    transform: translateY(calc(var(--u) * -7)) scale(1.05);
+  }
+
+  .pf-card:hover .pf-card-bg {
+    filter: drop-shadow(0 calc(var(--u) * 7) calc(var(--u) * 8) rgb(0 0 0 / 0.22));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-card-body,
+  .pf-card-bg {
+    transition: none;
+  }
+
+  .pf-card:hover .pf-card-body,
+  .pf-card:active .pf-card-body {
+    transform: none;
+  }
+}
+
+/* Hero CTA: calmer cousin of the card hover. */
+.pf-cta {
+  text-decoration: none;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-cta-chevron {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-cta:focus-visible {
+  outline: 2px solid var(--color-sky);
+  outline-offset: calc(var(--u) * 3);
+}
+
+.pf-cta:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@media (hover: hover) {
+  .pf-cta:hover {
+    transform: translateY(calc(var(--u) * -2)) scale(1.03);
+    background: color-mix(in srgb, var(--color-navy) 88%, #fff);
+  }
+
+  .pf-cta:hover .pf-cta-chevron {
+    transform: translateX(calc(var(--u) * 3.5));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-cta,
+  .pf-cta-chevron {
+    transition: none;
+  }
+
+  .pf-cta:hover,
+  .pf-cta:active,
+  .pf-cta:hover .pf-cta-chevron {
+    transform: none;
+  }
+}

@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import { Layer } from "./Canvas";
+import ScrollLink from "./ScrollLink";
 import { HERO_H, inset, px, rect as rectOf, rectIn } from "@/app/_components/geometry";
 
 const rect = rectIn(HERO_H);
@@ -140,9 +140,9 @@ export default function Hero() {
         dalam 1 platform
       </p>
 
-      <Link
+      <ScrollLink
         href="#features"
-        className="pf-button"
+        className="pf-button pf-cta"
         style={{
           ...rect(117.05, 329.47, 112.937, 30.048),
           justifyContent: "flex-start",
@@ -152,7 +152,7 @@ export default function Hero() {
       >
         Mulai Telusuri
         <span
-          className="pf-abs"
+          className="pf-abs pf-cta-chevron"
           style={rectOf(
             216.18 - 117.05,
             342.6 - 329.47,
@@ -164,7 +164,7 @@ export default function Hero() {
         >
           <Image src="/portal/icon-chevron.svg" alt="" fill />
         </span>
-      </Link>
+      </ScrollLink>
     </Layer>
   );
 }
