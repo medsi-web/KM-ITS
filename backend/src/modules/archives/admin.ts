@@ -1,5 +1,6 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { readPagination } from "../../lib/pagination.ts";
+import { filterValue, findPage, readPagination } from "../../lib/pagination.ts";
+import { pathId } from "../../lib/request.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
 import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
 import { isArchiveVisible } from "./models.ts";
@@ -8,10 +9,11 @@ import { getArchiveStore } from "./store.ts";
 
 const pagination = (url: URL) => readPagination(url, 25, 100);
 
-function archiveId(request: Request, mutation = false) {
-  const parts = new URL(request.url).pathname.replace(/\/$/, "").split("/");
-  const id = parts.at(mutation ? -2 : -1);
-  if (!id) throw new ApiError(404, "ARCHIVE_NOT_FOUND", "Archive not found.");
+function notFound() { return new ApiError(404, "ARCHIVE_NOT_FOUND", "Archive not found."); }
+
+function archiveId(request: Request, action?: "publish" | "unpublish") {
+  const id = pathId(request, action);
+  if (!id) throw notFound();
   return id;
 }
 
@@ -30,20 +32,15 @@ function adminArchive(record: ArchiveRecord) {
 
 export const archivesAdminList = defineHandler("archives.adminList", async (request) => {
   await requireAdmin(request, "ADMIN");
-  const { limit, offset } = pagination(new URL(request.url));
   const store = await getArchiveStore();
-  const [records, total] = await Promise.all([
-    store.archives.find({}).sort({ updatedAt: -1, _id: 1 }).skip(offset).limit(limit).toArray(),
-    store.archives.countDocuments({}),
-  ]);
-  return { items: records.map(adminArchive), total, limit, offset };
+  return findPage(store.archives, {}, { updatedAt: -1, _id: 1 }, pagination(new URL(request.url)), adminArchive);
 });
 
 export const archivesAdminDetail = defineHandler("archives.adminDetail", async (request) => {
   await requireAdmin(request, "ADMIN");
   const store = await getArchiveStore();
   const record = await store.archives.findOne({ _id: archiveId(request) });
-  if (!record) throw new ApiError(404, "ARCHIVE_NOT_FOUND", "Archive not found.");
+  if (!record) throw notFound();
   const lastSync = await store.syncLogs.findOne({ streamId: record.streamId, externalSubmissionId: record.externalSubmissionId }, { sort: { receivedAt: -1, _id: -1 } });
   return { ...adminArchive(record), lastSync: lastSync ? syncLogView(lastSync) : null };
 });
@@ -51,13 +48,13 @@ export const archivesAdminDetail = defineHandler("archives.adminDetail", async (
 function visibilityHandler(hidden: boolean) {
   return defineHandler(hidden ? "archives.unpublish" : "archives.publish", async (request) => {
     const context = await requireAdmin(request, "ADMIN", true);
-    const id = archiveId(request, true);
+    const id = archiveId(request, hidden ? "unpublish" : "publish");
     const auth = await getAuthStore();
     const store = await getArchiveStore();
     return accessTransaction(auth, async (transaction) => {
       const actor = await assertCurrentActor(auth, context, transaction, false);
       const before = await store.archives.findOne({ _id: id }, { session: transaction });
-      if (!before) throw new ApiError(404, "ARCHIVE_NOT_FOUND", "Archive not found.");
+      if (!before) throw notFound();
       const changed = before.manualHidden !== hidden;
       const after = changed ? { ...before, manualHidden: hidden, generation: before.generation + 1, updatedAt: new Date() } : before;
       if (changed) {
@@ -79,7 +76,6 @@ function visibilityHandler(hidden: boolean) {
 export const archivesPublish = visibilityHandler(false);
 export const archivesUnpublish = visibilityHandler(true);
 
-
 function syncLogView(log: ArchiveSyncLog) {
   return { id: log._id, streamId: log.streamId, deliveryId: log.deliveryId,
     externalSubmissionId: log.externalSubmissionId, scanSequence: log.scanSequence,
@@ -89,19 +85,12 @@ function syncLogView(log: ArchiveSyncLog) {
 
 // Archive branch of GET /api/admin/sync-logs; the caller has authorized the admin.
 export async function archiveSyncLogPage(url: URL) {
-  const { limit, offset } = pagination(url);
+  const page = pagination(url);
   const filter: { streamId?: string; externalSubmissionId?: string } = {};
   for (const key of ["streamId", "externalSubmissionId"] as const) {
-    const value = url.searchParams.get(key);
-    if (value !== null) {
-      if (!value || value.length > 256) throw new ApiError(400, "INVALID_FILTER", "Filter values must contain 1–256 characters.");
-      filter[key] = value;
-    }
+    const value = filterValue(url, key, 256);
+    if (value !== undefined) filter[key] = value;
   }
   const store = await getArchiveStore();
-  const [records, total] = await Promise.all([
-    store.syncLogs.find(filter).sort({ receivedAt: -1, _id: -1 }).skip(offset).limit(limit).toArray(),
-    store.syncLogs.countDocuments(filter),
-  ]);
-  return { items: records.map(syncLogView), total, limit, offset };
+  return findPage(store.syncLogs, filter, { receivedAt: -1, _id: -1 }, page, syncLogView);
 }

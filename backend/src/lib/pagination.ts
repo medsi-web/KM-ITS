@@ -8,7 +8,7 @@ export function readPagination(url: URL, defaultLimit: number, maxLimit: number)
     const raw = url.searchParams.get(key);
     const value = raw === null ? fallback : Number(raw);
     if ((raw !== null && !/^\d+$/.test(raw)) || !Number.isSafeInteger(value) || value < min || value > max) {
-      throw new ApiError(400, "INVALID_PAGINATION", `Use limit 1-${maxLimit} and offset 0-${MAX_OFFSET}.`);
+      throw new ApiError(400, "INVALID_PAGINATION", `Use limit 1–${maxLimit} and offset 0–${MAX_OFFSET}.`);
     }
     return value;
   };

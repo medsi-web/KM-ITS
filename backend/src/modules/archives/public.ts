@@ -1,4 +1,6 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
+import { findPage, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { driveReader, DriveSourceMissing } from "../../integrations/drive-reader.ts";
 import type { DriveReader } from "../../integrations/drive-reader.ts";
 import { getArchiveStore } from "./store.ts";
@@ -10,9 +12,8 @@ const visibleQuery = { sourceState: "VALID" as const, manualHidden: false, snaps
 function notFound() { return new ApiError(404, "ARCHIVE_NOT_FOUND", "The archive document was not found."); }
 
 function recordId(request: Request): string {
-  const parts = new URL(request.url).pathname.split("/");
-  const id = parts.at(-1) === "open" ? parts.at(-2) : parts.at(-1);
-  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw notFound();
+  const id = pathId(request, "open");
+  if (!id || !UUID_PATTERN.test(id)) throw notFound();
   return id;
 }
 
@@ -28,24 +29,12 @@ export function publicArchive(record: ArchiveRecord) {
 
 export const archivesList = defineHandler("archives.list", async (request) => {
   const url = new URL(request.url);
-  const rawLimit = url.searchParams.get("limit") ?? "20";
-  const rawOffset = url.searchParams.get("offset") ?? "0";
-  const limit = Number(rawLimit);
-  const offset = Number(rawOffset);
-  if (!/^\d+$/.test(rawLimit) || !/^\d+$/.test(rawOffset) || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0 || offset > 10000) {
-    throw new ApiError(400, "INVALID_PAGINATION", "Use limit 1–100 and offset 0–10000.");
-  }
+  const page = readPagination(url, 20, 100);
   // Search/grouping/filter contracts still need FE agreement. Reject unsupported
   // parameters instead of silently implying that filtering was performed.
-  if ([...url.searchParams.keys()].some((key) => !["limit", "offset"].includes(key))) {
-    throw new ApiError(400, "UNSUPPORTED_QUERY", "Only limit and offset are currently supported.");
-  }
+  rejectUnknownQuery(url, ["limit", "offset"]);
   const { archives } = await getArchiveStore();
-  const [records, total] = await Promise.all([
-    archives.find(visibleQuery).sort({ updatedAt: -1, _id: 1 }).skip(offset).limit(limit).toArray(),
-    archives.countDocuments(visibleQuery),
-  ]);
-  return { items: records.map(publicArchive), total, limit, offset };
+  return findPage(archives, visibleQuery, { updatedAt: -1, _id: 1 }, page, publicArchive);
 });
 
 export const archivesDetail = defineHandler("archives.detail", async (request) => {
