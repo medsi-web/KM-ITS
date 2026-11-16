@@ -1,7 +1,8 @@
 import type { ClientSession, Filter } from "mongodb";
 import { FieldError } from "../../lib/fields.ts";
 import { ApiError, defineHandler, readJsonObject } from "../../lib/http.ts";
-import { pathId, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { pathId } from "../../lib/request.ts";
 import type { AdminAccount } from "../auth/models.ts";
 import { assertCurrentActor, requireAdmin, type AdminContext } from "../auth/session.ts";
 import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";

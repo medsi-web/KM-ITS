@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
 import { getDatabase } from "../../lib/database.ts";
-import { ApiError } from "../../lib/http.ts";
+import { markSchemaReady, requireSchema } from "../../lib/schema.ts";
 import type { ArchiveDelivery, ArchiveRecord, ArchiveSyncLog } from "./models.ts";
 export function archiveCollections(database: Db) {
   return { archives: database.collection<ArchiveRecord>("archives"), deliveries: database.collection<ArchiveDelivery>("archive_deliveries"), syncLogs: database.collection<ArchiveSyncLog>("archive_sync_logs") };
@@ -8,9 +8,7 @@ export function archiveCollections(database: Db) {
 export type ArchiveStore = ReturnType<typeof archiveCollections>;
 export async function getArchiveStore() {
   const database = await getDatabase();
-  const ready = await database.collection<{ _id: string; schemaVersion: number }>("archive_control")
-    .findOne({ _id: "schema", schemaVersion: 1 });
-  if (!ready) throw new ApiError(503, "ARCHIVE_NOT_INITIALIZED", "Run Archive setup before serving document traffic.");
+  await requireSchema(database, "archive_control", "ARCHIVE_NOT_INITIALIZED", "Run Archive setup before serving document traffic.");
   return archiveCollections(database);
 }
 export async function initializeArchives(database: Db) {
@@ -20,8 +18,5 @@ export async function initializeArchives(database: Db) {
   await store.deliveries.createIndex({ streamId: 1, deliveryId: 1 }, { unique: true });
   await store.deliveries.createIndex({ streamId: 1, scanSequence: 1 }, { unique: true });
   await store.syncLogs.createIndex({ receivedAt: -1, _id: -1 });
-  // Mark ready only after the uniqueness/ordering indexes exist. Requests must
-  // not run ingestion without the constraints that make concurrent delivery safe.
-  await database.collection<{ _id: string; schemaVersion: number }>("archive_control")
-    .updateOne({ _id: "schema" }, { $set: { schemaVersion: 1 } }, { upsert: true });
+  await markSchemaReady(database, "archive_control");
 }

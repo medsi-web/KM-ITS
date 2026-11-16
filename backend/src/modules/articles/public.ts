@@ -1,6 +1,7 @@
 import type { Filter } from "mongodb";
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { pathId, readPagination, rejectUnknownQuery, UUID_PATTERN } from "../../lib/pagination.ts";
+import { readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { articleSettings } from "./config.ts";
 import type { ArticleRecord } from "./models.ts";
 import { getArticleStore } from "./store.ts";

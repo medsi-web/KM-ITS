@@ -1,5 +1,6 @@
 import { ApiError, defineHandler, readJsonObject } from "../../lib/http.ts";
-import { pathId, readPagination } from "../../lib/pagination.ts";
+import { readPagination } from "../../lib/pagination.ts";
+import { pathId } from "../../lib/request.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
 import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
 import { timelineSettings } from "./config.ts";

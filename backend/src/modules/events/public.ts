@@ -1,7 +1,8 @@
 import type { Filter } from "mongodb";
 import { isInstant } from "../../lib/fields.ts";
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { pathId, readPagination, rejectUnknownQuery, UUID_PATTERN } from "../../lib/pagination.ts";
+import { readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { timelineSettings } from "./config.ts";
 import { timeStatus, type EventRecord, type TimeStatus } from "./models.ts";
 import { getEventStore } from "./store.ts";

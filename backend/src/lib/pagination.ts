@@ -19,11 +19,3 @@ export function rejectUnknownQuery(url: URL, allowed: readonly string[]) {
   const unknown = [...url.searchParams.keys()].filter(key => !allowed.includes(key));
   if (unknown.length) throw new ApiError(400, "UNSUPPORTED_QUERY", `Supported query parameters: ${allowed.join(", ")}.`);
 }
-
-// The last path segment, or the one before a trailing action segment.
-export function pathId(request: Request, action?: string): string | undefined {
-  const parts = new URL(request.url).pathname.replace(/\/$/, "").split("/");
-  return action && parts.at(-1) === action ? parts.at(-2) : parts.at(-1);
-}
-
-export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
