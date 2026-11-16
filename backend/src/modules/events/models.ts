@@ -1,6 +1,8 @@
+import type { ItemOutcome } from "../../lib/batch-sync.ts";
+
+export type { ItemOutcome };
 export type EventStatus = "confirmed" | "cancelled";
 export type TimeStatus = "UPCOMING" | "ONGOING" | "FINISHED";
-export type ItemOutcome = "applied" | "unchanged" | "stale" | "conflict" | "invalid";
 
 export interface EventContent {
   title: string; description: string; location: string; organization: string;

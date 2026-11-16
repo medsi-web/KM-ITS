@@ -34,7 +34,7 @@ test("items are validated one by one with field-specific reasons", () => {
   assert.deepEqual(result.items.map(item => item.ok ? "ok" : item.reason), ["ok", "INVALID_END_AT", "INVALID_TITLE", "INVALID_EVENT_ID", "INVALID_EVENT", "ok"]);
   const cancelled = result.items[5];
   assert.ok(cancelled.ok && cancelled.value.content === null);
-  assert.equal(result.items[3].ok ? "" : result.items[3].eventId, null);
+  assert.equal(result.items[3].ok ? "" : result.items[3].id, null);
 });
 
 test("optional text defaults, offsets normalize to UTC and description length is configurable", () => {

@@ -41,10 +41,6 @@ export function textList(value: unknown, maxItems: number, maxLength: number, fi
   return value.map(item => text(item, maxLength, field));
 }
 
-export function itemList(value: unknown, max: number): unknown[] | null {
-  return Array.isArray(value) && value.length >= 1 && value.length <= max ? value : null;
-}
-
 export function isInstant(value: string): boolean {
   return INSTANT.test(value) && Number.isFinite(Date.parse(value));
 }

@@ -1,4 +1,6 @@
-export type ItemOutcome = "applied" | "unchanged" | "stale" | "conflict" | "invalid";
+import type { ItemOutcome } from "../../lib/batch-sync.ts";
+
+export type { ItemOutcome };
 
 export interface ArticleContent {
   schemaVersion: 1; title: string; summary: string; category: string; ministry: string;
