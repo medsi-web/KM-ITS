@@ -1,7 +1,7 @@
 import type { Filter } from "mongodb";
 import { isInstant } from "../../lib/fields.ts";
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { findPage, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
 import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { timelineSettings } from "./config.ts";
 import { timeStatus, type EventRecord, type TimeStatus } from "./models.ts";
@@ -48,15 +48,11 @@ export const eventsList = defineHandler("events.list", async (request) => {
   const url = new URL(request.url);
   rejectUnknownQuery(url, ["from", "to", "status", "limit", "offset"]);
   const settings = timelineSettings();
-  const { limit, offset } = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
+  const page = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
   const now = new Date();
   const filter = eventFilter(url, now);
   const { events } = await getEventStore();
-  const [records, total] = await Promise.all([
-    events.find(filter).sort({ "content.startAt": 1, _id: 1 }).skip(offset).limit(limit).toArray(),
-    events.countDocuments(filter),
-  ]);
-  return { items: records.map(record => publicEvent(record, now)), total, limit, offset };
+  return findPage(events, filter, { "content.startAt": 1, _id: 1 }, page, record => publicEvent(record, now));
 });
 
 export const eventsDetail = defineHandler("events.detail", async (request) => {

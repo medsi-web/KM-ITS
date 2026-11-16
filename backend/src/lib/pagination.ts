@@ -1,3 +1,4 @@
+import type { Collection, Document, Filter, Sort, WithId } from "mongodb";
 import { ApiError } from "./errors.ts";
 
 export const MAX_OFFSET = 10000;
@@ -18,4 +19,23 @@ export function readPagination(url: URL, defaultLimit: number, maxLimit: number)
 export function rejectUnknownQuery(url: URL, allowed: readonly string[]) {
   const unknown = [...url.searchParams.keys()].filter(key => !allowed.includes(key));
   if (unknown.length) throw new ApiError(400, "UNSUPPORTED_QUERY", `Supported query parameters: ${allowed.join(", ")}.`);
+}
+
+// One page of a collection plus the total match count, in the common
+// `{ items, total, limit, offset }` response shape.
+export async function findPage<T extends Document, V>(collection: Collection<T>, filter: Filter<T>, sort: Sort,
+  page: { limit: number; offset: number }, view: (record: WithId<T>) => V) {
+  const [records, total] = await Promise.all([
+    collection.find(filter).sort(sort).skip(page.offset).limit(page.limit).toArray(),
+    collection.countDocuments(filter),
+  ]);
+  return { items: records.map(view), total, limit: page.limit, offset: page.offset };
+}
+
+// An optional exact-match filter value with a length bound.
+export function filterValue(url: URL, key: string, maxLength: number): string | undefined {
+  const value = url.searchParams.get(key);
+  if (value === null) return undefined;
+  if (!value || value.length > maxLength) throw new ApiError(400, "INVALID_FILTER", `Filter values must contain 1–${maxLength} characters.`);
+  return value;
 }

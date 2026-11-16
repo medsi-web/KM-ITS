@@ -1,6 +1,6 @@
 import type { Filter } from "mongodb";
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { findPage, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
 import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { articleSettings } from "./config.ts";
 import type { ArticleRecord } from "./models.ts";
@@ -25,13 +25,9 @@ export const articlesList = defineHandler("articles.list", async (request) => {
   const url = new URL(request.url);
   rejectUnknownQuery(url, ["limit", "offset"]);
   const settings = articleSettings();
-  const { limit, offset } = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
+  const page = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
   const { articles } = await getArticleStore();
-  const [records, total] = await Promise.all([
-    articles.find(publishedQuery).sort({ firstPublishedAt: -1, _id: 1 }).skip(offset).limit(limit).toArray(),
-    articles.countDocuments(publishedQuery),
-  ]);
-  return { items: records.map(record => publicArticle(record, false)), total, limit, offset };
+  return findPage(articles, publishedQuery, { firstPublishedAt: -1, _id: 1 }, page, record => publicArticle(record, false));
 });
 
 export const articlesDetail = defineHandler("articles.detail", async (request) => {

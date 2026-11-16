@@ -1,5 +1,5 @@
 import { ApiError, defineHandler, readJsonObject } from "../../lib/http.ts";
-import { readPagination } from "../../lib/pagination.ts";
+import { filterValue, findPage, readPagination } from "../../lib/pagination.ts";
 import { pathId } from "../../lib/request.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
 import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
@@ -27,14 +27,19 @@ export function eventSyncLogView(log: EventSyncLog) {
 export const eventsAdminList = defineHandler("events.adminList", async (request) => {
   await requireAdmin(request, "ADMIN");
   const settings = timelineSettings();
-  const { limit, offset } = readPagination(new URL(request.url), settings.pageDefaultLimit, settings.pageMaxLimit);
+  const page = readPagination(new URL(request.url), settings.pageDefaultLimit, settings.pageMaxLimit);
   const { events } = await getEventStore();
-  const [records, total] = await Promise.all([
-    events.find({}).sort({ updatedAt: -1, _id: 1 }).skip(offset).limit(limit).toArray(),
-    events.countDocuments({}),
-  ]);
-  return { items: records.map(adminEvent), total, limit, offset };
+  return findPage(events, {}, { updatedAt: -1, _id: 1 }, page, adminEvent);
 });
+
+// Events branch of GET /api/admin/sync-logs; the caller has authorized the admin.
+export async function eventSyncLogPage(url: URL) {
+  const settings = timelineSettings();
+  const page = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
+  const eventId = filterValue(url, "eventId", 1024);
+  const store = await getEventStore();
+  return findPage(store.syncLogs, eventId ? { eventId } : {}, { receivedAt: -1, _id: -1 }, page, eventSyncLogView);
+}
 
 export const eventsAdminDetail = defineHandler("events.adminDetail", async (request) => {
   await requireAdmin(request, "ADMIN");

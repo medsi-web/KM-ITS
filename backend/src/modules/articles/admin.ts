@@ -1,7 +1,7 @@
 import type { ClientSession, Filter } from "mongodb";
 import { FieldError } from "../../lib/fields.ts";
 import { ApiError, defineHandler, readJsonObject } from "../../lib/http.ts";
-import { readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { filterValue, findPage, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
 import { pathId } from "../../lib/request.ts";
 import type { AdminAccount } from "../auth/models.ts";
 import { assertCurrentActor, requireAdmin, type AdminContext } from "../auth/session.ts";
@@ -43,17 +43,22 @@ export const articlesAdminList = defineHandler("articles.adminList", async (requ
   const url = new URL(request.url);
   rejectUnknownQuery(url, ["published", "limit", "offset"]);
   const settings = articleSettings();
-  const { limit, offset } = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
+  const page = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
   const published = url.searchParams.get("published");
   if (published !== null && published !== "true" && published !== "false") throw new ApiError(400, "INVALID_FILTER", "published must be true or false.");
   const filter: Filter<ArticleRecord> = published === null ? {} : { isPublished: published === "true" };
   const { articles } = await getArticleStore();
-  const [records, total] = await Promise.all([
-    articles.find(filter).sort({ updatedAt: -1, _id: 1 }).skip(offset).limit(limit).toArray(),
-    articles.countDocuments(filter),
-  ]);
-  return { items: records.map(adminSummary), total, limit, offset };
+  return findPage(articles, filter, { updatedAt: -1, _id: 1 }, page, adminSummary);
 });
+
+// Articles branch of GET /api/admin/sync-logs; the caller has authorized the admin.
+export async function articleSyncLogPage(url: URL) {
+  const settings = articleSettings();
+  const page = readPagination(url, settings.pageDefaultLimit, settings.pageMaxLimit);
+  const responseId = filterValue(url, "responseId", 1024);
+  const store = await getArticleStore();
+  return findPage(store.syncLogs, responseId ? { responseId } : {}, { receivedAt: -1, _id: -1 }, page, articleSyncLogView);
+}
 
 export const articlesAdminDetail = defineHandler("articles.adminDetail", async (request) => {
   await requireAdmin(request, "ADMIN");
