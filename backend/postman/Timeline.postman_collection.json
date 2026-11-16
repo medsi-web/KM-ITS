@@ -4,6 +4,27 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "description": "Local temporary database only. Requires a ready super-admin, the ingestion secret and calendarId equal to EVENT_CALENDAR_ID. Exercises batch sync ordering, public window/status filters, admin hiding and sync logs. Use a fresh database for each run."
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!/^http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?$/.test(pm.environment.get(\"baseUrl\") || \"\")) throw new Error(\"Local test server required\");"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"JSON envelope\", () => { const b = pm.response.json(); pm.expect(b.success).to.eql(pm.response.code < 400); pm.expect(b.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(Date.parse(b.meta.timestamp)).not.to.be.NaN; pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(b.meta.requestId); });",
+          "pm.test(\"No caching\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "Login timeline operator",

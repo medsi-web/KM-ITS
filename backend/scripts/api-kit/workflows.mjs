@@ -140,10 +140,12 @@ export const archiveWorkflow = {
 
 export const timelineWorkflow = {
   info: { ...authInfo, name: "KM ITS - Timeline Workflow", description: "Local temporary database only. Requires a ready super-admin, the ingestion secret and calendarId equal to EVENT_CALENDAR_ID. Exercises batch sync ordering, public window/status filters, admin hiding and sync logs. Use a fresh database for each run." },
+  event: workflowEvents,
   item: [ownerLogin("Login timeline operator"), ...timelineSteps, ...ownerLogout],
 };
 
 export const articlesWorkflow = {
   info: { ...authInfo, name: "KM ITS - Articles Workflow", description: "Local temporary database only. Requires a ready super-admin, the ingestion secret and formId equal to ARTICLE_FORM_ID. Exercises unpublished ingestion, revision-checked publish, draft editing, source updates and unpublish. Use a fresh database for each run." },
+  event: workflowEvents,
   item: [ownerLogin("Login article reviewer"), ...articleSteps, ...ownerLogout],
 };
