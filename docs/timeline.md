@@ -1,8 +1,8 @@
 # Timeline ingestion and publication
 
 Google Calendar is the source of truth for KM ITS events. One shared calendar is
-registered through `EVENT_CALENDAR_ID`. An Apps Script connector (not part of
-this repository) reads the calendar and posts normalized event batches to the
+registered through `EVENT_CALENDAR_ID`. The `syncTimeline` Apps Script connector
+(`backend/apps-script`) reads the calendar and posts normalized event batches to the
 backend. MongoDB stores the application copy and the website visibility state.
 
 ## Source and identity

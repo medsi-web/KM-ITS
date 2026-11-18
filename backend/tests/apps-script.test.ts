@@ -8,6 +8,7 @@ import path from "node:path";
 import vm from "node:vm";
 import { afterEach, test } from "node:test";
 import { validateObservation } from "../src/modules/archives/validation.ts";
+import { validateEventBatch } from "../src/modules/events/validation.ts";
 
 const SOURCE = path.resolve(import.meta.dirname, "../apps-script/src");
 const SECRET = "apps-script-test-secret-not-for-deployment";
@@ -220,4 +221,56 @@ test("archive connector stops on authentication failure and validates its config
   ] as const) {
     assert.throws(() => connector({ properties }).call("syncArchive"), message);
   }
+});
+
+// ---- Timeline -----------------------------------------------------------------
+
+const CALENDAR = "kmits@group.calendar.google.com";
+const timedEvent = { id: "evt1", status: "confirmed", updated: "2026-11-16T03:00:00.000Z", summary: "[Kementerian Sosial] Bakti Sosial", description: "Agenda\u0007", location: "ITS", start: { dateTime: "2026-11-20T09:00:00+07:00" }, end: { dateTime: "2026-11-20T11:00:00+07:00" } };
+const allDayEvent = { id: "evt2_20261120", status: "tentative", updated: "2026-11-16T03:01:00.000Z", summary: "Libur", start: { date: "2026-11-20" }, end: { date: "2026-11-21" }, extendedProperties: { shared: { kmitsOrganization: "BEM ITS" } } };
+const cancelledEvent = { id: "evt3", status: "cancelled", updated: "2026-11-16T03:02:00.000Z" };
+
+test("timeline connector maps Calendar events, pages, stores the sync token and resends after a failure", () => {
+  process.env.EVENT_CALENDAR_ID = CALENDAR;
+  const listings: Json[] = [];
+  let tokenExpired = false;
+  const timeline = connector({ properties: { KMITS_CALENDAR_ID: CALENDAR }, calendar(query) {
+    listings.push(query);
+    if (query.syncToken === "expired" && tokenExpired) throw new Error("API call failed with error: Sync token is no longer valid, a full sync is required.");
+    if (query.syncToken) return { timeZone: "Asia/Jakarta", items: [cancelledEvent], nextSyncToken: "token-2" };
+    if (!query.pageToken) return { timeZone: "Asia/Jakarta", items: [timedEvent, allDayEvent], nextPageToken: "page-2" };
+    return { timeZone: "Asia/Jakarta", items: [cancelledEvent], nextSyncToken: "token-1" };
+  } });
+  timeline.setReply(body => ok({ results: (body.events as Json[]).map((event, index) => ({ index, eventId: event.eventId, outcome: "applied" })) }));
+  const stats = timeline.call("syncTimeline") as { done: boolean; sent: number };
+  assert.equal(stats.done, true); assert.equal(stats.sent, 3);
+  assert.equal(listings[0].singleEvents, true); assert.equal(listings[0].showDeleted, true); assert.ok(listings[0].timeMin);
+  assert.equal(listings[1].pageToken, "page-2"); assert.equal(listings[1].timeMin, listings[0].timeMin, "page tokens repeat the same parameters");
+  const batch = validateEventBatch(timeline.requests[0].body);
+  const items = batch.items.map(item => { assert.ok(item.ok); return item.value; });
+  assert.equal(items[0].content!.title, "Bakti Sosial");
+  assert.equal(items[0].content!.organization, "Kementerian Sosial");
+  assert.equal(items[0].content!.description, "Agenda");
+  assert.equal(items[0].content!.startAt.toISOString(), "2026-11-20T02:00:00.000Z");
+  assert.equal(items[1].status, "confirmed", "tentative events are sent as confirmed");
+  assert.equal(items[1].content!.allDay, true);
+  assert.equal(items[1].content!.organization, "BEM ITS");
+  assert.equal(items[1].content!.startAt.toISOString(), "2026-11-19T17:00:00.000Z", "all-day events start at WIB midnight");
+  assert.equal(items[1].content!.endAt.toISOString(), "2026-11-20T17:00:00.000Z", "Google's all-day end date is exclusive");
+  assert.equal(validateEventBatch(timeline.requests[1].body).items[0].ok && (validateEventBatch(timeline.requests[1].body).items[0] as { value: { status: string } }).value.status, "cancelled");
+  assert.equal(timeline.properties.get("state:timeline:syncToken"), "token-1");
+
+  timeline.setReply(() => ({ status: 503 }));
+  timeline.call("syncTimeline");
+  assert.equal(listings.at(-1)!.syncToken, "token-1");
+  assert.equal(timeline.properties.get("state:timeline:syncToken"), "token-1", "a failed batch keeps the old token");
+
+  timeline.setReply(() => ok({ results: [] }));
+  timeline.call("syncTimeline");
+  assert.equal(timeline.properties.get("state:timeline:syncToken"), "token-2");
+
+  timeline.properties.set("state:timeline:syncToken", "expired"); tokenExpired = true;
+  timeline.call("syncTimeline");
+  assert.ok(listings.at(-2)!.timeMin && !listings.at(-2)!.syncToken, "an expired token restarts with a full listing");
+  assert.equal(timeline.properties.get("state:timeline:syncToken"), "token-1");
 });
