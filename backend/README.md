@@ -35,12 +35,13 @@ Copy-Item frontend/.env.example frontend/.env.local
 Set `MONGODB_URI` in `frontend/.env.local`, and check `app.origin` and
 `database.name` in [`kmits.config.json`](../kmits.config.json) (see
 [Configuration](#configuration)). For a fresh installation, set
-`auth.bootstrapSuperAdminUsername` and privately set
-`BOOTSTRAP_SUPER_ADMIN_PASSWORD`, then run:
+`auth.bootstrapSuperAdminUsername`, then hash your password and put only the hash
+in the environment:
 
 ```powershell
+pnpm auth:hash        # type the password twice; prints BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH='...'
 pnpm auth:setup
-pnpm auth:bootstrap
+pnpm auth:bootstrap   # reads the hash; remove it from the env file afterwards
 pnpm archives:setup
 pnpm timeline:setup
 pnpm articles:setup
@@ -210,7 +211,7 @@ Secrets, environment only:
 |---|---|
 | `MONGODB_URI` | Transaction-capable MongoDB; may contain a password |
 | `APPS_SCRIPT_INGESTION_SECRET` | Bearer secret for every `/api/internal/sync/*` route (32+ characters; empty turns ingestion off) |
-| `BOOTSTRAP_SUPER_ADMIN_PASSWORD` | First super admin only; remove after bootstrap |
+| `BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH` | Argon2id hash from `pnpm auth:hash` for the first super admin only; remove after bootstrap. The plaintext password is never stored. |
 | `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY`, `DRIVE_PUBLIC_API_KEY` | Archive PDF verification |
 
 Raise `API_MAX_JSON_BYTES` together with `ARTICLE_BODY_MAX_CHARS` or the batch

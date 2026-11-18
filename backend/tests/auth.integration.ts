@@ -4,6 +4,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { getDatabase, getMongoClient } from "../src/lib/database.ts";
 import { ApiError } from "../src/lib/http.ts";
 import { bootstrapSuperAdmin } from "../src/modules/auth/identity.ts";
+import { hashPassword } from "../src/modules/auth/password.ts";
 import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
 import type { AuthStore } from "../src/modules/auth/store.ts";
 import { issuePasswordSession, requireAdmin, endSession } from "../src/modules/auth/session.ts";
@@ -42,7 +43,7 @@ function request(token: string, path = "/api/auth/me", body?: unknown, csrf = tr
   }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 async function ownerContext() {
-  await bootstrapSuperAdmin(store, "owner", secret);
+  await bootstrapSuperAdmin(store, "owner", await hashPassword(secret));
   return issuePasswordSession(store, "OWNER", secret);
 }
 async function permanentAccount(owner: Awaited<ReturnType<typeof ownerContext>>, role = "ADMIN") {
@@ -141,7 +142,8 @@ test("rate limits share normalized username across browsers, browser across user
 });
 
 test("fixed 24h hashed sessions rotate, expire, logout and bootstrap serialization", async () => {
-  const results = await Promise.allSettled([bootstrapSuperAdmin(store, "owner", secret), bootstrapSuperAdmin(store, "other", secret)]);
+  const secretHash = await hashPassword(secret);
+  const results = await Promise.allSettled([bootstrapSuperAdmin(store, "owner", secretHash), bootstrapSuperAdmin(store, "other", secretHash)]);
   assert.equal(results.filter(value => value.status === "fulfilled").length, 1);
   const account = await store.accounts.findOne({});
   const initial = await issuePasswordSession(store, account!.username, secret);

@@ -41,13 +41,16 @@ pnpm install
 Copy-Item frontend/.env.example frontend/.env.local
 ```
 
-Configure a MongoDB replica set or Atlas, `APP_ORIGIN`, and private bootstrap
-credentials in `frontend/.env.local`. For local development, start MongoDB in
+Non-secret settings live in [`kmits.config.json`](kmits.config.json); secrets
+(MongoDB URI, password hash, ingestion secret hash, Drive keys) live in
+`frontend/.env.local`. Create the first super admin's password hash with
+`pnpm auth:hash`. For local development, start MongoDB in
 Docker with `pnpm db:up`; see [local database](backend/README.md#local-database-docker).
 For a fresh installation:
 
 ```powershell
 pnpm db:up
+pnpm auth:hash
 pnpm auth:setup
 pnpm auth:bootstrap
 pnpm archives:setup

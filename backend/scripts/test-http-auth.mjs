@@ -12,6 +12,7 @@ import newman from "newman";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { getDatabase, getMongoClient } from "../src/lib/database.ts";
 import { bootstrapSuperAdmin } from "../src/modules/auth/identity.ts";
+import { hashPassword } from "../src/modules/auth/password.ts";
 import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
 import { initializeArchives, archiveCollections } from "../src/modules/archives/store.ts";
 import { initializeEvents } from "../src/modules/events/store.ts";
@@ -39,7 +40,7 @@ try {
     ARCHIVE_SOURCE_CONFIG: JSON.stringify([{ streamId: "http-test-stream", folderId: "http-folder", ministryId: "http-ministry" }]),
     EVENT_CALENDAR_ID: calendarId, ARTICLE_FORM_ID: formId,
     DRIVE_SERVICE_ACCOUNT_EMAIL: "", DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY: "", DRIVE_PUBLIC_API_KEY: "",
-    BOOTSTRAP_SUPER_ADMIN_USERNAME: "", BOOTSTRAP_SUPER_ADMIN_PASSWORD: "",
+    BOOTSTRAP_SUPER_ADMIN_USERNAME: "", BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH: "",
   };
   Object.assign(process.env, env);
   const database = await getDatabase();
@@ -48,7 +49,7 @@ try {
   await initializeEvents(database);
   await initializeArticles(database);
   const store = authCollections(database);
-  await bootstrapSuperAdmin(store, "http-owner", password);
+  await bootstrapSuperAdmin(store, "http-owner", await hashPassword(password));
   child = spawn(process.execPath, [fileURLToPath(new URL("../../frontend/node_modules/next/dist/bin/next", import.meta.url)), "start", "--hostname", "127.0.0.1", "--port", String(port)], {
     cwd: fileURLToPath(new URL("../../frontend/", import.meta.url)), env, stdio: "ignore", windowsHide: true,
   });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 import { ApiError } from "../src/lib/http.ts";
-import { hashPassword, normalizedUsername, verifyPassword, validPassword } from "../src/modules/auth/password.ts";
+import { hashPassword, normalizedUsername, verifyPassword, validPassword, validPasswordHash } from "../src/modules/auth/password.ts";
 import { appOrigin, authCookie, cookieName, csrfForSession, opaqueToken, readCookie, requireCsrf, SESSION_SECONDS, tokenHash } from "../src/modules/auth/security.ts";
 
 const originalEnvironment = { ...process.env };
@@ -60,4 +60,15 @@ test("Argon2id hashes have the configured cost, independent salts and bounded in
   assert.equal(validPassword("a".repeat(11)), false);
   assert.equal(validPassword("a".repeat(129)), false);
   await assert.rejects(hashPassword("short"), ApiError);
+});
+
+test("bootstrap accepts only Argon2id hashes with at least the configured cost", async () => {
+  const hash = await hashPassword("a strong password 123");
+  assert.equal(validPasswordHash(hash), true);
+  assert.equal(validPasswordHash(`  ${hash}
+`), true, "surrounding whitespace from an env file is tolerated");
+  const weaker = hash.replace("m=19456", "m=4096");
+  for (const value of ["a strong password 123", "", undefined, weaker, hash.replace("t=2", "t=1"), hash.replace("argon2id", "argon2i"), `${hash}$extra`]) {
+    assert.equal(validPasswordHash(value), false, String(value));
+  }
 });

@@ -15,6 +15,7 @@
     "test:auth": "newman run postman/Auth.postman_collection.json -e postman/Local.postman_environment.json --bail --timeout-request 10000 --reporter-cli-no-assertions",
     "auth:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs",
     "auth:bootstrap": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs --bootstrap",
+    "auth:hash": "node scripts/hash-password.mjs",
     "auth:migrate": "node --env-file-if-exists=../frontend/.env.local scripts/migrate-auth.mjs",
     "archives:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-feature.mjs archives",
     "timeline:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-feature.mjs timeline",
