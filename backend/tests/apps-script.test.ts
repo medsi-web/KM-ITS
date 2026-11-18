@@ -20,10 +20,10 @@ type Json = Record<string, unknown>;
 type Reply = { status: number; body?: unknown } | { throws: string };
 interface DriveFile { id: string; name: string; mimeType: string; version: string; size?: string; sha256Checksum?: string; content?: string; bytes?: Buffer; access?: string }
 
-const plain = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+const plain = <T>(value: T): T => (value === undefined ? value : JSON.parse(JSON.stringify(value)));
 const ok = (data: unknown) => ({ status: 200, body: { success: true, data } });
 
-function connector(options: { properties?: Record<string, string>; folders?: Record<string, DriveFile[] | Error>; calendar?: (options: Json) => unknown; form?: unknown } = {}) {
+function connector(options: { properties?: Record<string, string>; folders?: Record<string, DriveFile[] | Error>; calendar?: (options: Json) => unknown; form?: unknown; services?: Json } = {}) {
   const properties = new Map(Object.entries({
     KMITS_BACKEND_URL: "https://kmits.example", KMITS_INGESTION_SECRET: SECRET, ...options.properties,
   }));
@@ -41,8 +41,8 @@ function connector(options: { properties?: Record<string, string>; folders?: Rec
     }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
     UrlFetchApp: { fetch(url: string, init: Json) {
-      const body = JSON.parse(String(init.payload)) as Json;
-      requests.push({ url, body, authorization: (init.headers as Json).Authorization as string });
+      const body = (init.payload === undefined ? {} : JSON.parse(String(init.payload))) as Json;
+      requests.push({ url, body, authorization: ((init.headers ?? {}) as Json).Authorization as string });
       const answer = reply(body, url);
       if ("throws" in answer) throw new Error(answer.throws);
       return { getResponseCode: () => answer.status, getContentText: () => JSON.stringify(answer.body ?? {}) };
@@ -80,6 +80,7 @@ function connector(options: { properties?: Record<string, string>; folders?: Rec
     Calendar: { Events: { list: (_calendarId: string, query: Json) => options.calendar!(plain(query)) } },
     FormApp: { openById: () => options.form },
   };
+  Object.assign(sandbox, options.services);
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   for (const file of readdirSync(SOURCE).filter(name => name.endsWith(".js")).sort()) {
@@ -315,4 +316,62 @@ test("articles connector maps form answers to submissions and advances its water
   assert.equal((queries[1] as Date).toISOString(), "2026-11-16T03:50:00.000Z", "re-reads with a 10-minute overlap");
   assert.equal(articles.properties.get("state:articles:since"), String(Date.parse("2026-11-16T04:00:00.000Z")));
   assert.throws(() => connector({ properties: { KMITS_FORM_ID: FORM, KMITS_FORM_FIELDS: "{\"heading\":\"x\"}" }, form: { getResponses: () => [] } }).call("syncArticles"), /unknown field "heading"/);
+});
+
+// ---- Setup functions --------------------------------------------------------------
+
+function fakeScriptApp() {
+  const triggers: { handler: string; kind: string }[] = [{ handler: "someoneElsesJob", kind: "time" }];
+  const builder = (handler: string) => {
+    const make = (kind: string) => ({ create: () => { triggers.push({ handler, kind }); } });
+    return {
+      timeBased: () => ({ everyMinutes: (n: number) => make(`every ${n} minutes`), everyHours: (n: number) => make(`every ${n} hours`) }),
+      forUserCalendar: () => ({ onEventUpdated: () => make("calendar change") }),
+      forForm: () => ({ onFormSubmit: () => make("form submit") }),
+    };
+  };
+  return {
+    triggers,
+    ScriptApp: {
+      newTrigger: builder,
+      getProjectTriggers: () => triggers.map(trigger => ({ getHandlerFunction: () => trigger.handler, trigger })),
+      deleteTrigger: (wrapped: { trigger: unknown }) => { triggers.splice(triggers.indexOf(wrapped.trigger as never), 1); },
+    },
+  };
+}
+
+test("installTriggers schedules only configured connectors and removeTriggers keeps other triggers", () => {
+  const all = fakeScriptApp();
+  const full = connector({ properties: { KMITS_ARCHIVE_STREAMS: JSON.stringify([STREAM]), KMITS_CALENDAR_ID: CALENDAR, KMITS_FORM_ID: FORM }, services: { ScriptApp: all.ScriptApp } });
+  full.call("installTriggers");
+  full.call("installTriggers");
+  assert.deepEqual(all.triggers.map(t => `${t.handler}: ${t.kind}`), [
+    "someoneElsesJob: time", "syncArchive: every 5 minutes", "syncTimeline: every 15 minutes", "syncTimeline: calendar change",
+    "syncArticles: form submit", "syncArticles: every 1 hours",
+  ], "reinstalling does not duplicate");
+  full.call("removeTriggers");
+  assert.deepEqual(all.triggers.map(t => t.handler), ["someoneElsesJob"]);
+
+  const archiveOnly = fakeScriptApp();
+  connector({ properties: { KMITS_ARCHIVE_STREAMS: JSON.stringify([STREAM]) }, services: { ScriptApp: archiveOnly.ScriptApp } }).call("installTriggers");
+  assert.deepEqual(archiveOnly.triggers.map(t => t.handler), ["someoneElsesJob", "syncArchive"]);
+});
+
+test("checkSetup reports each source and names missing form questions", () => {
+  const setup = connector({
+    properties: { KMITS_ARCHIVE_STREAMS: JSON.stringify([STREAM, { streamId: "policy", folderId: "notAFolder" }]), KMITS_CALENDAR_ID: CALENDAR, KMITS_FORM_ID: FORM },
+    form: { getTitle: () => "Artikel KM ITS", getItems: () => ["Judul", "Ringkasan"].map(title => ({ getTitle: () => title })) },
+    services: {
+      Drive: { Files: { get: (id: string) => id === "folderA" ? { id, name: "Keuangan", mimeType: "application/vnd.google-apps.folder" } : { id, name: "x.pdf", mimeType: "application/pdf" } } },
+      Calendar: { Calendars: { get: () => ({ summary: "Agenda KM ITS", timeZone: "Asia/Jakarta" }) } },
+    },
+  });
+  setup.setReply(() => ({ status: 200 }));
+  const lines = setup.call("checkSetup") as string[];
+  assert.deepEqual(lines.map(line => line.slice(0, 4)), ["OK  ", "OK  ", "OK  ", "FAIL", "OK  ", "FAIL"]);
+  assert.match(lines[2], /"Keuangan"/);
+  assert.match(lines[3], /notAFolder is not a folder/);
+  assert.match(lines[4], /Agenda KM ITS/);
+  assert.match(lines[5], /no question for: body/);
+  assert.match((connector({ properties: { KMITS_BACKEND_URL: "" } }).call("checkSetup") as string[])[0], /^FAIL Script Properties/);
 });
