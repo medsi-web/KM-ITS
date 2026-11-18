@@ -17,7 +17,7 @@ backend. MongoDB stores the application copy and the website visibility state.
 
 ## HTTP protocol
 
-`POST /api/internal/sync/events` uses `Authorization: Bearer <APPS_SCRIPT_INGESTION_SECRET>`.
+`POST /api/internal/sync/events` uses `Authorization: Bearer <ingestion secret>`; the server stores only its SHA-256 in `APPS_SCRIPT_INGESTION_SECRET_SHA256`.
 The body is at most `API_MAX_JSON_BYTES` (default 256 KiB):
 
 ```json

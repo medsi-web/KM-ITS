@@ -173,7 +173,7 @@ export function buildOpenApi(endpoints) {
       schemas,
       securitySchemes: {
         adminCookie: { type: "apiKey", in: "cookie", name: "kmits_session", description: "HTTPS uses __Host-kmits_session. Mutations require exact Origin and session CSRF token." },
-        integrationBearer: { type: "http", scheme: "bearer", description: "APPS_SCRIPT_INGESTION_SECRET; server-to-server only." },
+        integrationBearer: { type: "http", scheme: "bearer", description: "The Apps Script ingestion secret; the server stores only its SHA-256 (APPS_SCRIPT_INGESTION_SECRET_SHA256). Server-to-server only." },
       },
     },
   };

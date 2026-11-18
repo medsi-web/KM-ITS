@@ -5373,7 +5373,7 @@
       "integrationBearer": {
         "type": "http",
         "scheme": "bearer",
-        "description": "APPS_SCRIPT_INGESTION_SECRET; server-to-server only."
+        "description": "The Apps Script ingestion secret; the server stores only its SHA-256 (APPS_SCRIPT_INGESTION_SECRET_SHA256). Server-to-server only."
       }
     }
   }

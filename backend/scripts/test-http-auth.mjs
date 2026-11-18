@@ -17,6 +17,7 @@ import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
 import { initializeArchives, archiveCollections } from "../src/modules/archives/store.ts";
 import { initializeEvents } from "../src/modules/events/store.ts";
 import { initializeArticles } from "../src/modules/articles/store.ts";
+import { ingestionSecretHash } from "../src/integrations/apps-script.ts";
 
 let replica;
 let child;
@@ -36,7 +37,7 @@ try {
   const formId = "http-test-form";
   const env = {
     ...process.env, MONGODB_URI: replica.getUri(), MONGODB_DATABASE: "kmits_http_local_test", APP_ORIGIN: origin,
-    APPS_SCRIPT_INGESTION_SECRET: ingestionSecret,
+    APPS_SCRIPT_INGESTION_SECRET_SHA256: ingestionSecretHash(ingestionSecret),
     ARCHIVE_SOURCE_CONFIG: JSON.stringify([{ streamId: "http-test-stream", folderId: "http-folder", ministryId: "http-ministry" }]),
     EVENT_CALENDAR_ID: calendarId, ARTICLE_FORM_ID: formId,
     DRIVE_SERVICE_ACCOUNT_EMAIL: "", DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY: "", DRIVE_PUBLIC_API_KEY: "",

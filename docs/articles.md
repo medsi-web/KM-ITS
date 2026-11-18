@@ -15,7 +15,7 @@ own: an admin reviews it and publishes it.
 
 ## HTTP protocol
 
-`POST /api/internal/sync/articles` uses `Authorization: Bearer <APPS_SCRIPT_INGESTION_SECRET>`.
+`POST /api/internal/sync/articles` uses `Authorization: Bearer <ingestion secret>`; the server stores only its SHA-256 in `APPS_SCRIPT_INGESTION_SECRET_SHA256`.
 The body is at most `API_MAX_JSON_BYTES` (default 256 KiB). The connector splits
 large sets into several requests.
 

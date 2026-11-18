@@ -126,8 +126,9 @@ Run `pnpm archives:setup` to create Archive indexes and validate configuration.
 Archive requests fail closed with `503` until setup records the schema as ready
 after creating the required uniqueness and ordering indexes.
 Keep stream identities and scan-sequence namespaces stable across connector
-restarts. Configure a random `APPS_SCRIPT_INGESTION_SECRET` of at least 32
-characters; internal ingestion uses `Authorization: Bearer <secret>`.
+restarts. Run `pnpm integration:secret`: it prints a random secret for the Apps
+Script project and its SHA-256 for `APPS_SCRIPT_INGESTION_SECRET_SHA256`. The
+server stores only the hash. Internal ingestion uses `Authorization: Bearer <secret>`.
 
 Archive ingestion validates the source registration, delivery identity, sequence,
 metadata and PDF observations. It tracks duplicates, stale deliveries, source
@@ -210,7 +211,7 @@ Secrets, environment only:
 | Variable | Purpose |
 |---|---|
 | `MONGODB_URI` | Transaction-capable MongoDB; may contain a password |
-| `APPS_SCRIPT_INGESTION_SECRET` | Bearer secret for every `/api/internal/sync/*` route (32+ characters; empty turns ingestion off) |
+| `APPS_SCRIPT_INGESTION_SECRET_SHA256` | SHA-256 (hex) of the bearer secret for every `/api/internal/sync/*` route, from `pnpm integration:secret`. The plaintext secret lives only in the Apps Script project. Empty turns ingestion off. |
 | `BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH` | Argon2id hash from `pnpm auth:hash` for the first super admin only; remove after bootstrap. The plaintext password is never stored. |
 | `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY`, `DRIVE_PUBLIC_API_KEY` | Archive PDF verification |
 

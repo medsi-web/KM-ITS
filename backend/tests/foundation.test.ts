@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 import { MongoNetworkError, MongoNotConnectedError, MongoServerSelectionError, MongoTopologyClosedError } from "mongodb";
 import { endpoints } from "../src/contracts/endpoints.ts";
-import { requireIngestionSecret } from "../src/integrations/apps-script.ts";
+import { ingestionSecretHash, requireIngestionSecret } from "../src/integrations/apps-script.ts";
 import { pingDatabase } from "../src/lib/database.ts";
 import { ApiError, defineHandler, MAX_JSON_BYTES, readJsonObject } from "../src/lib/http.ts";
 import { syncArticles, syncEvents } from "../src/modules/sync/handlers.ts";
@@ -102,15 +102,15 @@ test("database connectivity loss after connection maps to 503, not 500", async (
 });
 
 test("ingestion stays disabled for absent or short configuration", () => {
-  for (const value of ["", "too-short"]) {
-    process.env.APPS_SCRIPT_INGESTION_SECRET = value;
+  for (const value of ["", "too-short", "z".repeat(64), testSecret]) {
+    process.env.APPS_SCRIPT_INGESTION_SECRET_SHA256 = value;
     assert.throws(() => requireIngestionSecret(request()), apiError(503, "INTEGRATION_NOT_CONFIGURED"));
   }
 });
 
 test("configured ingestion rejects missing/wrong credentials and accepts the exact secret", () => {
-  process.env.APPS_SCRIPT_INGESTION_SECRET = testSecret;
-  for (const authorization of ["", "Basic abc", "Bearer wrong", `Bearer ${testSecret}x`]) {
+  process.env.APPS_SCRIPT_INGESTION_SECRET_SHA256 = ingestionSecretHash(testSecret).toUpperCase();
+  for (const authorization of ["", "Basic abc", "Bearer wrong", `Bearer ${testSecret}x`, `Bearer ${ingestionSecretHash(testSecret)}`]) {
     assert.throws(() => requireIngestionSecret(request("{}", { authorization })), apiError(401, "UNAUTHORIZED_INTEGRATION"));
   }
   requireIngestionSecret(request("{}", { authorization: `Bearer ${testSecret}` }));
@@ -138,7 +138,7 @@ test("every inventory operation is implemented; nothing is left as a reserved pl
 
 test("internal endpoints authenticate before parsing the body or touching storage", async () => {
   delete process.env.MONGODB_URI;
-  process.env.APPS_SCRIPT_INGESTION_SECRET = testSecret;
+  process.env.APPS_SCRIPT_INGESTION_SECRET_SHA256 = ingestionSecretHash(testSecret);
   for (const handler of [syncEvents, syncArticles]) {
     assert.equal((await handler(request("{broken"))).status, 401);
     assert.equal((await handler(request("{}", { authorization: "Bearer wrong" }))).status, 401);

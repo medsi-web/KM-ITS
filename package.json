@@ -18,6 +18,7 @@
     "auth:setup": "pnpm --filter @kmits/backend auth:setup",
     "auth:bootstrap": "pnpm --filter @kmits/backend auth:bootstrap",
     "auth:hash": "pnpm --filter @kmits/backend auth:hash",
+    "integration:secret": "pnpm --filter @kmits/backend integration:secret",
     "auth:migrate": "pnpm --filter @kmits/backend auth:migrate",
     "archives:setup": "pnpm --filter @kmits/backend archives:setup",
     "timeline:setup": "pnpm --filter @kmits/backend timeline:setup",

@@ -16,6 +16,7 @@
     "auth:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs",
     "auth:bootstrap": "node --env-file-if-exists=../frontend/.env.local scripts/setup-auth.mjs --bootstrap",
     "auth:hash": "node scripts/hash-password.mjs",
+    "integration:secret": "node scripts/ingestion-secret.mjs",
     "auth:migrate": "node --env-file-if-exists=../frontend/.env.local scripts/migrate-auth.mjs",
     "archives:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-feature.mjs archives",
     "timeline:setup": "node --env-file-if-exists=../frontend/.env.local scripts/setup-feature.mjs timeline",
