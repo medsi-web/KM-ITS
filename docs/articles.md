@@ -1,7 +1,7 @@
 # Article ingestion and publication
 
 Contributors submit articles through one Google Form. Its responses go to a
-Google Sheet, and an Apps Script connector (not part of this repository) posts
+Google Sheet, and the `syncArticles` Apps Script connector (`backend/apps-script`) posts
 normalized submissions to the backend. A submission never becomes public on its
 own: an admin reviews it and publishes it.
 

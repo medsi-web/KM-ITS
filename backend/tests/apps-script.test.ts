@@ -9,6 +9,7 @@ import vm from "node:vm";
 import { afterEach, test } from "node:test";
 import { validateObservation } from "../src/modules/archives/validation.ts";
 import { validateEventBatch } from "../src/modules/events/validation.ts";
+import { validateArticleBatch } from "../src/modules/articles/validation.ts";
 
 const SOURCE = path.resolve(import.meta.dirname, "../apps-script/src");
 const SECRET = "apps-script-test-secret-not-for-deployment";
@@ -273,4 +274,45 @@ test("timeline connector maps Calendar events, pages, stores the sync token and 
   timeline.call("syncTimeline");
   assert.ok(listings.at(-2)!.timeMin && !listings.at(-2)!.syncToken, "an expired token restarts with a full listing");
   assert.equal(timeline.properties.get("state:timeline:syncToken"), "token-1");
+});
+
+// ---- Articles -------------------------------------------------------------------
+
+const FORM = "1FAIpQLSexampleFormId";
+function formResponse(id: string, submitted: string, answers: Record<string, unknown>, email = "writer@its.ac.id") {
+  return {
+    getId: () => id, getTimestamp: () => new Date(submitted), getRespondentEmail: () => email,
+    getItemResponses: () => Object.entries(answers).map(([title, answer]) => ({ getItem: () => ({ getTitle: () => title }), getResponse: () => answer })),
+  };
+}
+
+test("articles connector maps form answers to submissions and advances its watermark only after success", () => {
+  process.env.ARTICLE_FORM_ID = FORM;
+  const responses = [
+    formResponse("2_ABaOnud1", "2026-11-16T03:00:00.000Z", { " Judul ": "Program Kerja", "Isi Artikel": "## Heading\n\nIsi.", Ringkasan: "Singkat", Kategori: "Berita", Kementerian: "Kominfo", Penulis: "Ani, Budi\nCici", "Gambar Sampul": ["1CoverFileId"], "Keterangan Gambar": "Foto tim", "Pertanyaan lain": "ignored" }),
+    formResponse("2_ABaOnud2", "2026-11-16T04:00:00.000Z", { "Judul Tulisan": "Tanpa sampul", Isi: "Teks" }, "not-an-email"),
+  ];
+  const queries: unknown[] = [];
+  const articles = connector({ properties: { KMITS_FORM_ID: FORM, KMITS_FORM_FIELDS: JSON.stringify({ title: ["Judul", "Judul Tulisan"] }) }, form: {
+    getResponses: (since?: Date) => { queries.push(since ?? null); return since ? responses.filter(response => response.getTimestamp() >= since) : responses; },
+  } });
+  articles.setReply(() => ok({ results: [] }));
+  const stats = articles.call("syncArticles") as { done: boolean; sent: number };
+  assert.equal(stats.done, true); assert.equal(stats.sent, 2);
+  const batch = validateArticleBatch(articles.requests[0].body);
+  const [first, second] = batch.items.map(item => { assert.ok(item.ok, JSON.stringify(item)); return item.value; });
+  assert.deepEqual(plain(first.content), {
+    schemaVersion: 1, title: "Program Kerja", summary: "Singkat", category: "Berita", ministry: "Kominfo",
+    authors: ["Ani", "Budi", "Cici"], coverImage: { driveFileId: "1CoverFileId", alt: "Foto tim" }, body: "## Heading\n\nIsi.",
+  });
+  assert.equal(first.submitterEmail, "writer@its.ac.id");
+  assert.equal(second.content.title, "Tanpa sampul"); assert.equal(second.content.coverImage, null);
+  assert.equal(second.submitterEmail, null, "an invalid email is not sent");
+  assert.equal(articles.properties.get("state:articles:since"), String(Date.parse("2026-11-16T04:00:00.000Z")));
+
+  articles.setReply(() => ({ throws: "DNS error" }));
+  articles.call("syncArticles");
+  assert.equal((queries[1] as Date).toISOString(), "2026-11-16T03:50:00.000Z", "re-reads with a 10-minute overlap");
+  assert.equal(articles.properties.get("state:articles:since"), String(Date.parse("2026-11-16T04:00:00.000Z")));
+  assert.throws(() => connector({ properties: { KMITS_FORM_ID: FORM, KMITS_FORM_FIELDS: "{\"heading\":\"x\"}" }, form: { getResponses: () => [] } }).call("syncArticles"), /unknown field "heading"/);
 });
