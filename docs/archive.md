@@ -91,6 +91,21 @@ authors:
 
 The frontmatter `driveFileId` identifies the PDF, not this Markdown file. Upload replacements with a new PDF Drive ID, then change this reference. The scanner supplies the Markdown file's identity/version, source folder, checksum, and public-readability evidence in the ingestion envelope. It sends only the defined metadata keys; body text and notes do not become publication metadata. Description, category, year, and authors may be omitted as described above.
 
+## Public list filters
+
+`GET /api/archives` returns only visible documents and accepts:
+
+| Parameter | Meaning |
+|---|---|
+| `ministryId` | Exact ministry ID from `ARCHIVE_SOURCE_CONFIG`. |
+| `category` | Exact category, case-insensitive. |
+| `year` | Four-digit document year (1900 or later). |
+| `q` | 1–100 characters. Case-insensitive substring search over title, description, category and authors. Regex characters are matched literally. |
+| `sort` | `newest` (default, last update first), `oldest`, or `title` (A–Z, case-insensitive). |
+| `limit`, `offset` | Pagination: limit 1–100 (default 20), offset 0–10000. |
+
+Filters combine with AND. Invalid values return `400 INVALID_FILTER` or `400 INVALID_PAGINATION`; unknown parameters return `400 UNSUPPORTED_QUERY`.
+
 ## Public opening and reader configuration
 
 `GET /api/archives/{id}/open` returns a `302` redirect to the current verified PDF's Drive viewer URL with `Cache-Control: no-store`. Hidden or suppressed documents and confirmed missing, inaccessible, out-of-scope, or mismatched PDFs return `404`. A confirmed source failure suppresses the affected record while retaining its snapshot. Temporary provider, quota, authentication, or configuration failures return `503` and preserve publication state. Concurrent record changes require verification of the current version before redirecting.

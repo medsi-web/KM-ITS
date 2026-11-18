@@ -141,8 +141,10 @@ Records are retained rather than hard deleted. Source loss or invalidity suppres
 public visibility until a valid observation restores it.
 
 Public list/detail return sanitized metadata and an application open URL only for
-currently visible records. List pagination supports `limit` and `offset`; search
-and grouping are not implemented. Opening a document verifies its current PDF
+currently visible records. The list accepts `ministryId`, `category` and `year`
+filters, a case-insensitive `q` search over title, description, category and
+authors, `sort=newest|oldest|title`, and `limit`/`offset`. Grouping by ministry
+is done by the client with `ministryId`. Opening a document verifies its current PDF
 through Drive, then redirects to the Drive viewer. Hidden or unavailable records
 return `404`; temporary verification failures may return `503`.
 

@@ -1,4 +1,4 @@
-import type { Collection, Document, Filter, Sort, WithId } from "mongodb";
+import type { CollationOptions, Collection, Document, Filter, Sort, WithId } from "mongodb";
 import { ApiError } from "./errors.ts";
 
 export const MAX_OFFSET = 10000;
@@ -24,10 +24,11 @@ export function rejectUnknownQuery(url: URL, allowed: readonly string[]) {
 // One page of a collection plus the total match count, in the common
 // `{ items, total, limit, offset }` response shape.
 export async function findPage<T extends Document, V>(collection: Collection<T>, filter: Filter<T>, sort: Sort,
-  page: { limit: number; offset: number }, view: (record: WithId<T>) => V) {
+  page: { limit: number; offset: number }, view: (record: WithId<T>) => V, collation?: CollationOptions) {
+  const options = collation ? { collation } : {};
   const [records, total] = await Promise.all([
-    collection.find(filter).sort(sort).skip(page.offset).limit(page.limit).toArray(),
-    collection.countDocuments(filter),
+    collection.find(filter, options).sort(sort).skip(page.offset).limit(page.limit).toArray(),
+    collection.countDocuments(filter, options),
   ]);
   return { items: records.map(view), total, limit: page.limit, offset: page.offset };
 }

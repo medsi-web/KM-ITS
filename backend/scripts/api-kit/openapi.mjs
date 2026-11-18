@@ -90,14 +90,14 @@ const REQUEST_SCHEMA = {
 const REQUEST_EXAMPLE = { "sync.archives": observationExample, "sync.events": eventExample, "sync.articles": articleExample };
 
 const QUERY_PARAMETERS = {
-  "archives.list": ["limit", "offset"],
+  "archives.list": ["ministryId", "category", "year", "q", "sort", "limit", "offset"],
   "events.list": ["from", "to", "status", "limit", "offset"],
   "events.adminList": ["limit", "offset"],
   "articles.list": ["limit", "offset"],
   "articles.adminList": ["published", "limit", "offset"],
   "sync.logs": ["source", "streamId", "externalSubmissionId", "eventId", "responseId", "limit", "offset"],
 };
-const QUERY_DESCRIPTIONS = { from: "Window start (ISO 8601).", to: "Window end (ISO 8601).", status: "UPCOMING, ONGOING or FINISHED, evaluated at request time.", limit: "Page size; bounds come from the feature's *_PAGE_* settings.", offset: "0-10000.", published: "true or false.", source: "archives (default), events or articles.", streamId: "Archive only.", externalSubmissionId: "Archive only.", eventId: "Events only.", responseId: "Articles only." };
+const QUERY_DESCRIPTIONS = { from: "Window start (ISO 8601).", to: "Window end (ISO 8601).", status: "UPCOMING, ONGOING or FINISHED, evaluated at request time.", limit: "Page size; bounds come from the feature's *_PAGE_* settings.", offset: "0-10000.", published: "true or false.", source: "archives (default), events or articles.", streamId: "Archive only.", externalSubmissionId: "Archive only.", eventId: "Events only.", responseId: "Articles only.", ministryId: "Exact ministry ID from the source registry.", category: "Exact category, case-insensitive.", year: "Four-digit document year.", q: "Case-insensitive search in title, description, category and authors (1-100 characters).", sort: "newest (default), oldest or title." };
 
 // ---- Operations ------------------------------------------------------------
 

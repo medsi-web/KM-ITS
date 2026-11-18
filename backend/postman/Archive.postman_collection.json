@@ -185,6 +185,78 @@
       ]
     },
     {
+      "name": "Archive filters and search",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?ministryId=http-ministry&category=reports&year=2026&q=fixture&sort=title",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Matches filters\",()=>pm.expect(pm.response.json().data.total).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Non-matching search is empty",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?q=no-such-document",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Empty\",()=>pm.expect(pm.response.json().data.total).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid sort is rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?sort=random",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_FILTER\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "Public archive detail",
       "protocolProfileBehavior": {
         "followRedirects": false,
