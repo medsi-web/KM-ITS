@@ -1,8 +1,9 @@
 import { ApiError } from "../../lib/http.ts";
+import { setting } from "../../lib/config.ts";
 export interface ArchiveSource { streamId: string; ministryId: string; folderId: string }
 export function archiveSources(): ArchiveSource[] {
   try {
-    const value: unknown = JSON.parse(process.env.ARCHIVE_SOURCE_CONFIG ?? "[]");
+    const value: unknown = JSON.parse(setting("ARCHIVE_SOURCE_CONFIG") ?? "[]");
     if (!Array.isArray(value) || !value.length) throw Error();
     const streams = new Set<string>();
     const folders = new Set<string>();
