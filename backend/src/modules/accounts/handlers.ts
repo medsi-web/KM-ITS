@@ -1,7 +1,8 @@
 import { defineHandler, readJsonObject } from "../../lib/http.ts";
+import { pathId } from "../../lib/request.ts";
 import { requireAdmin } from "../auth/session.ts";
 import { getAuthStore } from "../auth/store.ts";
-import { createAccount, listAccounts, updateAccount } from "./service.ts";
+import { createAccount, listAccounts, updateAccount, resetPassword } from "./service.ts";
 
 export const accountsList = defineHandler("accounts.list", async (request) => {
   await requireAdmin(request, "SUPER_ADMIN");
@@ -15,6 +16,10 @@ export const accountsCreate = defineHandler("accounts.create", async (request) =
 
 export const accountsUpdate = defineHandler("accounts.update", async (request) => {
   const actor = await requireAdmin(request, "SUPER_ADMIN", true);
-  const id = new URL(request.url).pathname.split("/").at(-1) ?? "";
-  return updateAccount(await getAuthStore(), actor, id, await readJsonObject(request));
+  return updateAccount(await getAuthStore(), actor, pathId(request) ?? "", await readJsonObject(request));
+});
+
+export const accountsResetPassword = defineHandler("accounts.resetPassword", async (request) => {
+  const actor = await requireAdmin(request, "SUPER_ADMIN", true);
+  return resetPassword(await getAuthStore(), actor, pathId(request, "reset-password") ?? "");
 });

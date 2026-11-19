@@ -3,13 +3,12 @@ import { MongoServerError } from "mongodb";
 import type { ClientSession, Db } from "mongodb";
 import { getDatabase, getMongoClient } from "../../lib/database.ts";
 import { ApiError } from "../../lib/http.ts";
-import type { AdminAccount, AdminAudit, AdminControl, AdminSession, OAuthAttempt, RateLimit } from "./models.ts";
+import type { AdminAccount, AdminAudit, AdminControl, AdminSession, RateLimit } from "./models.ts";
 
 export function authCollections(database: Db) {
   return {
     accounts: database.collection<AdminAccount>("admins"),
     sessions: database.collection<AdminSession>("admin_sessions"),
-    attempts: database.collection<OAuthAttempt>("admin_oauth_attempts"),
     rates: database.collection<RateLimit>("admin_rate_limits"),
     control: database.collection<AdminControl>("admin_control"),
     audit: database.collection<AdminAudit>("admin_audit"),
@@ -19,23 +18,31 @@ export type AuthStore = ReturnType<typeof authCollections>;
 
 export async function getAuthStore(): Promise<AuthStore> {
   const store = authCollections(await getDatabase());
-  if (!await store.control.findOne({ _id: "access" })) {
-    throw new ApiError(503, "AUTH_NOT_INITIALIZED", "Run the authentication setup command first.");
+  if (!await store.control.findOne({ _id: "access", authSchema: "local-password-v1" })) {
+    throw new ApiError(503, "AUTH_NOT_INITIALIZED", "Run authentication setup or migrate the legacy authentication schema first.");
   }
   return store;
 }
 
 export async function initializeAuth(database: Db): Promise<void> {
   const store = authCollections(database);
-  await store.accounts.createIndex({ email: 1 }, { unique: true });
-  await store.accounts.createIndex({ googleSub: 1 }, { unique: true, partialFilterExpression: { googleSub: { $type: "string" } } });
+  // Never silently alter legacy indexes or records. See the operator migration guide.
+  if (await database.listCollections({ name: "admins" }).hasNext()) {
+    const indexes = await store.accounts.listIndexes().toArray();
+    if (indexes.some((index) => index.unique && ("email" in index.key || "googleSub" in index.key))) {
+      throw new ApiError(503, "AUTH_MIGRATION_REQUIRED", "Legacy authentication requires the documented operator migration before setup.");
+    }
+  }
+  if (await store.accounts.countDocuments({ $or: [{ username: { $exists: false } }, { passwordHash: { $exists: false } }] })) {
+    throw new ApiError(503, "AUTH_MIGRATION_REQUIRED", "Migrate every legacy account before setup.");
+  }
+  await store.accounts.createIndex({ username: 1 }, { unique: true, partialFilterExpression: { username: { $type: "string" } } });
   await store.accounts.createIndex({ role: 1, active: 1 });
   await store.sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await store.sessions.createIndex({ accountId: 1 });
-  await store.attempts.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await store.rates.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await store.audit.createIndex({ at: -1 });
-  await store.control.updateOne({ _id: "access" }, { $setOnInsert: { revision: 0 } }, { upsert: true });
+  await store.control.updateOne({ _id: "access" }, { $setOnInsert: { revision: 0 }, $set: { authSchema: "local-password-v1" } }, { upsert: true });
 }
 
 // Every account/role/session-issuance transaction writes this common document.

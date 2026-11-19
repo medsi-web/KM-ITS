@@ -7,8 +7,8 @@ try {
   const database = await getDatabase();
   await initializeAuth(database);
   if (process.argv.includes("--bootstrap")) {
-    await bootstrapSuperAdmin(authCollections(database), process.env.BOOTSTRAP_SUPER_ADMIN_EMAIL);
-    console.log("Initial super-admin invitation created. Sign in using the configured Google account.");
+    await bootstrapSuperAdmin(authCollections(database), process.env.BOOTSTRAP_SUPER_ADMIN_USERNAME, process.env.BOOTSTRAP_SUPER_ADMIN_PASSWORD);
+    console.log("Initial super-admin created. Sign in using the configured username and password.");
   } else {
     console.log("Authentication indexes and control record are ready.");
   }

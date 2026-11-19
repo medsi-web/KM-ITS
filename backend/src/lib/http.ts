@@ -1,15 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { MongoNetworkError, MongoNotConnectedError, MongoServerSelectionError, MongoTopologyClosedError } from "mongodb";
+import { integerSetting } from "./config.ts";
+import { ApiError } from "./errors.ts";
 
-export class ApiError extends Error {
-  readonly status: number;
-  readonly code: string;
-
-  constructor(status: number, code: string, message: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
+export { ApiError };
 
 export function jsonResponse(
   requestId: string,
@@ -23,6 +17,13 @@ export function jsonResponse(
 }
 
 type Action = (request: Request) => Promise<unknown> | unknown;
+
+// A pooled client stays cached after its first connection, so a database that
+// goes down later surfaces as driver connectivity errors, not ApiError.
+function isDatabaseUnavailable(error: unknown): boolean {
+  return error instanceof MongoServerSelectionError || error instanceof MongoNetworkError
+    || error instanceof MongoTopologyClosedError || error instanceof MongoNotConnectedError;
+}
 
 export function defineHandler(operation: string, action: Action) {
   return async function handle(request: Request): Promise<Response> {
@@ -44,6 +45,11 @@ export function defineHandler(operation: string, action: Action) {
           error: { code: error.code, message: error.message },
         });
       }
+      if (isDatabaseUnavailable(error)) {
+        return jsonResponse(requestId, 503, {
+          error: { code: "DATABASE_UNAVAILABLE", message: "MongoDB is unavailable." },
+        });
+      }
       // Never log request bodies, credentials, database URIs, or stacks.
       console.error(JSON.stringify({ level: "error", event: "api.unhandled", operation, requestId }));
       return jsonResponse(requestId, 500, {
@@ -55,14 +61,19 @@ export function defineHandler(operation: string, action: Action) {
 
 export const MAX_JSON_BYTES = 256 * 1024;
 
+// API_MAX_JSON_BYTES raises or lowers the request body limit (1 KiB to 16 MiB).
+export function maxJsonBytes(): number {
+  return integerSetting("API_MAX_JSON_BYTES", MAX_JSON_BYTES, 1024, 16 * 1024 * 1024);
+}
+
 export async function readJsonObject(request: Request): Promise<Record<string, unknown>> {
   const mediaType = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
   if (mediaType !== "application/json") {
     throw new ApiError(415, "UNSUPPORTED_MEDIA_TYPE", "Use Content-Type: application/json.");
   }
-  if (Number(request.headers.get("content-length")) > MAX_JSON_BYTES) {
-    throw new ApiError(413, "PAYLOAD_TOO_LARGE", "JSON payload exceeds 256 KiB.");
-  }
+  const limit = maxJsonBytes();
+  const tooLarge = () => new ApiError(413, "PAYLOAD_TOO_LARGE", `JSON payload exceeds ${limit} bytes.`);
+  if (Number(request.headers.get("content-length")) > limit) throw tooLarge();
   const reader = request.body?.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -72,9 +83,9 @@ export async function readJsonObject(request: Request): Promise<Record<string, u
         const { done, value } = await reader.read();
         if (done) break;
         size += value.byteLength;
-        if (size > MAX_JSON_BYTES) {
+        if (size > limit) {
           await reader.cancel();
-          throw new ApiError(413, "PAYLOAD_TOO_LARGE", "JSON payload exceeds 256 KiB.");
+          throw tooLarge();
         }
         chunks.push(value);
       }

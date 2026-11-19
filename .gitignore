@@ -49,3 +49,6 @@ next-env.d.ts
 
 .claude/
 .mcp.json
+
+# Local backend handover notes
+/BACKEND_HANDOVER.md

@@ -13,7 +13,10 @@ test("every declared method has a real thin Next.js adapter pointing to a backen
     assert.ok(adapter.includes('from "@kmits/backend"'), `${id} workspace boundary`);
     const domain = id.split(".")[0];
     const module = await readFile(new URL(`../src/modules/${domain}/handlers.ts`, import.meta.url), "utf8");
-    assert.ok(module.includes(`export const ${symbol} =`), `${id} handler exists`);
+    const direct = module.includes(`export const ${symbol} =`);
+    const reexport = [...module.matchAll(/export\s*\{([^}]+)\}\s*from\s*["'][^"']+["']/g)]
+      .some((match) => match[1].split(",").some((entry) => entry.trim().split(/\s+as\s+/).at(-1) === symbol));
+    assert.ok(direct || reexport, `${id} handler exists`);
   }
 });
 
@@ -23,7 +26,7 @@ test("all generated Postman scripts parse before they reach a live server", asyn
     for (const event of item.event ?? []) assert.doesNotThrow(() => new Script(event.script.exec.join("\n")), item.name);
     for (const child of item.item ?? []) validate(child);
   }
-  for (const file of ["KMITS.postman_collection.json", "Auth.postman_collection.json"]) {
+  for (const file of ["KMITS.postman_collection.json", "Auth.postman_collection.json", "Archive.postman_collection.json", "Timeline.postman_collection.json", "Articles.postman_collection.json"]) {
     validate(JSON.parse(await readFile(new URL(`../postman/${file}`, import.meta.url), "utf8")) as Item);
   }
 });

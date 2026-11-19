@@ -2,8 +2,9 @@ export type AdminRole = "ADMIN" | "SUPER_ADMIN";
 
 export interface AdminAccount {
   _id: string;
-  email: string;
-  googleSub?: string;
+  username?: string; // Optional only for unmigrated legacy records, which fail closed.
+  passwordHash?: string;
+  requirePasswordChange?: boolean;
   name: string;
   role: AdminRole;
   active: boolean;
@@ -22,15 +23,7 @@ export interface AdminSession {
   expiresAt: Date;
 }
 
-export interface OAuthAttempt {
-  _id: string; // Hash of state
-  browserHash: string;
-  verifier: string;
-  nonce: string;
-  expiresAt: Date;
-}
-
-export interface AdminControl { _id: string; revision: number; bootstrapAccountId?: string }
+export interface AdminControl { _id: string; revision: number; bootstrapAccountId?: string; authSchema?: "local-password-v1" }
 export interface RateLimit { _id: string; count: number; expiresAt: Date }
 export interface AdminAudit {
   _id: string;
@@ -43,8 +36,8 @@ export interface AdminAudit {
 
 export function publicAccount(account: AdminAccount) {
   return {
-    id: account._id, email: account.email, name: account.name,
-    role: account.role, active: account.active, linked: Boolean(account.googleSub),
+    id: account._id, username: account.username ?? null, name: account.name,
+    role: account.role, active: account.active, requirePasswordChange: account.requirePasswordChange !== false,
     createdAt: account.createdAt, updatedAt: account.updatedAt,
     lastLoginAt: account.lastLoginAt ?? null,
   };
