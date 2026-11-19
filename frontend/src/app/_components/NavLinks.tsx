@@ -5,10 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { inset, px } from "./geometry";
 
+// Boxes sit flush right now that the login button is gone from the bar.
 const links = [
-  { label: "Knowledge", href: "/knowledge", box: inset(32.43, 23.44, 29.73, 70.44) },
-  { label: "Timeline", href: "#", box: inset(32.43, 17.22, 29.73, 78.11) },
-  { label: "News", href: "#", box: inset(32.43, 12.67, 29.73, 84.33) },
+  { label: "Knowledge", href: "/knowledge", box: inset(32.43, 12.77, 29.73, 81.11) },
+  { label: "Timeline", href: "/timeline", box: inset(32.43, 6.55, 29.73, 88.78) },
+  { label: "News", href: "/news", box: inset(32.43, 2, 29.73, 95) },
 ];
 
 export default function NavLinks() {
@@ -17,9 +18,7 @@ export default function NavLinks() {
   return (
     <nav aria-label="Utama">
       {links.map((l) => {
-        const active =
-          l.href !== "#" &&
-          (pathname === l.href || pathname.startsWith(`${l.href}/`));
+        const active = pathname === l.href || pathname.startsWith(`${l.href}/`);
         return (
           <Link
             key={l.label}

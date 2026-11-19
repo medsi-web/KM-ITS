@@ -30,21 +30,7 @@ export default function Navbar() {
           >
             Portal KM ITS
           </Link>
-
           <NavLinks />
-
-          <Link
-            href="#"
-            className="nb-login"
-            style={inset(21.62, 2, 21.61, 89.33)}
-          >
-            <span className="nb-loginIcon">
-              <Image src="/portal/icon-user.svg" alt="" fill />
-            </span>
-            <span className="nb-loginText" style={{ fontSize: px(8.16) }}>
-              Masuk
-            </span>
-          </Link>
         </header>
       </div>
     </div>

@@ -53,31 +53,6 @@
   white-space: nowrap;
 }
 
-.nb-login {
-  position: absolute;
-  background: #fff;
-  border: calc(var(--u) * 0.544082) solid var(--color-line);
-  border-radius: calc(var(--u) * 3.1);
-  color: var(--color-ink);
-}
-
-.nb-loginIcon {
-  position: absolute;
-  left: 30.29%;
-  top: 50%;
-  width: 10.4%;
-  height: 34.5%;
-  transform: translate(-50%, -50%);
-}
-
-.nb-loginText {
-  position: absolute;
-  left: 41.3%;
-  top: 50%;
-  transform: translateY(-50%);
-  font-weight: 700;
-  white-space: nowrap;
-}
 
 .nb-link-active {
   color: var(--color-navy);

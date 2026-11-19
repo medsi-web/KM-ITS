@@ -231,7 +231,7 @@ export default function Features() {
 
       {/* Card 2: Timeline */}
       <Card
-        href="#"
+        href="/timeline"
         label="Integrated Timeline KM ITS"
         origin="50.03% 52.5%"
         shape={{
