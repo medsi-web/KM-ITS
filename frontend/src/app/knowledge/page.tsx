@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import EmptyState from "./_components/EmptyState";
+import EmptyState from "../_components/EmptyState";
 import GroupCard from "./_components/GroupCard";
 import SearchBar from "./_components/SearchBar";
-import { groups, parseSort, searchGroups } from "./_data/groups";
+import { getGroups } from "./_data/archives";
+import { parseSort, searchGroups } from "./_data/groups";
 
 export const metadata: Metadata = {
   title: "KM ITS Knowledge | Portal KM ITS",
@@ -42,7 +43,20 @@ async function Results({
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 100) : "";
   const sort = parseSort(typeof params.sort === "string" ? params.sort : undefined);
-  const found = searchGroups(query, sort);
+  const groups = await getGroups().catch(() => null);
+  if (!groups) {
+    return (
+      <EmptyState
+        className="mt-[79px]"
+        icon="/knowledge/empty-book.svg"
+        title="Arsip belum dapat dimuat"
+        description="Terjadi gangguan saat mengambil arsip KM ITS. Coba muat ulang halaman beberapa saat lagi."
+        actionHref="/knowledge"
+        actionLabel="Muat ulang"
+      />
+    );
+  }
+  const found = searchGroups(groups, query, sort);
 
   return (
     <>
@@ -73,8 +87,8 @@ async function Results({
         />
       ) : (
         <ul className={`${gutter} mt-[30px] grid grid-cols-1 gap-x-9 gap-y-[33px] sm:grid-cols-2 lg:grid-cols-4`}>
-          {found.map((group) => (
-            <li key={group.slug} className="flex">
+          {found.map((group, i) => (
+            <li key={group.slug} className="kn-rise flex" style={{ animationDelay: `${i * 70}ms` }}>
               <div className="flex-1">
                 <GroupCard group={group} />
               </div>

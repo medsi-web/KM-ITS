@@ -4,12 +4,14 @@ import { formatShortDate, type KnowledgeGroup } from "../_data/groups";
 
 /**
  * One knowledge group. The title link is stretched over the whole card, so a
- * click anywhere (icon, text, empty space) opens the group; "Buka Drive" is
- * lifted above it as its own link.
+ * click anywhere (icon, text, empty space) opens the group. The hover lift
+ * runs on the article while the static wrapper owns the hover state, so the
+ * pointer never flickers at the card edge.
  */
 export default function GroupCard({ group }: { group: KnowledgeGroup }) {
   return (
-    <article className="group relative flex min-h-[265px] flex-col rounded-2xl border border-[#e5e5e5] bg-white p-[21px] shadow-[0_6px_27px_rgba(18,123,190,0.18)] transition-shadow duration-200 hover:shadow-[0_10px_28px_rgba(18,123,190,0.12),inset_0_0_0_1px_#e5e7eb] focus-within:shadow-[0_10px_28px_rgba(18,123,190,0.12),inset_0_0_0_1px_#e5e7eb]">
+    <div className="group h-full">
+    <article className="relative flex h-full min-h-[265px] flex-col rounded-2xl border border-[#e5e5e5] bg-white p-[21px] shadow-[0_6px_27px_rgba(18,123,190,0.18)] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-1.5 group-hover:scale-[1.03] group-hover:shadow-[0_16px_34px_rgba(18,123,190,0.22),inset_0_0_0_1px_#e5e7eb] focus-within:-translate-y-1.5 focus-within:scale-[1.03] focus-within:shadow-[0_16px_34px_rgba(18,123,190,0.22),inset_0_0_0_1px_#e5e7eb] motion-reduce:transition-none motion-reduce:transform-none">
       <div className="pb-4">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-[3px] pl-1">
@@ -52,32 +54,17 @@ export default function GroupCard({ group }: { group: KnowledgeGroup }) {
         <div className="flex items-center justify-between pt-1">
           <span className="flex items-center gap-[4px] text-xs font-semibold text-[#1e2229] group-hover:underline">
             Lihat group
-            <Image src="/knowledge/arrow.svg" alt="" width={7} height={3} />
+            <Image
+              src="/knowledge/arrow.svg"
+              alt=""
+              width={7}
+              height={3}
+              className="transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+            />
           </span>
-          <a
-            href={group.driveUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative z-10 flex items-center gap-[2px] text-[11px] text-[#525252] group-hover:font-semibold group-hover:text-[#1e2229]"
-          >
-            Buka Drive
-            <Image
-              src="/knowledge/external.svg"
-              alt=""
-              width={12}
-              height={12}
-              className="group-hover:hidden"
-            />
-            <Image
-              src="/knowledge/external-hover.svg"
-              alt=""
-              width={12}
-              height={12}
-              className="hidden group-hover:block"
-            />
-          </a>
         </div>
       </div>
     </article>
+    </div>
   );
 }

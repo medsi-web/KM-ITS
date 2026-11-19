@@ -2,34 +2,40 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import DocumentRow from "../_components/DocumentRow";
-import {
-  documents,
-  formatLongDate,
-  getGroup,
-  groupDescription,
-  groups,
-} from "../_data/groups";
-
-export function generateStaticParams() {
-  return groups.map((g) => ({ slug: g.slug }));
-}
+import { getGroup } from "../_data/archives";
+import { formatLongDate } from "../_data/groups";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/knowledge/[slug]">): Promise<Metadata> {
-  const group = getGroup((await params).slug);
+  const group = await getGroup((await params).slug).catch(() => undefined);
   if (!group) return {};
-  return { title: `${group.title ?? group.name} | KM ITS Knowledge` };
+  return { title: `${group.name} | KM ITS Knowledge` };
 }
 
-export default async function KnowledgeGroupPage({
+/** Group data is runtime data (the archive changes with every sync), so it streams inside Suspense. */
+export default function KnowledgeGroupPage({
   params,
 }: PageProps<"/knowledge/[slug]">) {
-  const group = getGroup((await params).slug);
+  return (
+    <Suspense fallback={<div className="h-[480px]" />}>
+      <Group params={params} />
+    </Suspense>
+  );
+}
+
+async function Group({ params }: Pick<PageProps<"/knowledge/[slug]">, "params">) {
+  // An API failure is not a missing group: let it reach the error boundary.
+  const group = await getGroup((await params).slug);
   if (!group) notFound();
 
-  const title = group.title ?? group.name;
+  const title = group.name;
+  const categories = [...new Set(group.documents.map((d) => d.category).filter(Boolean))];
+  const description = `${group.documentCount} dokumen arsip${
+    categories.length ? ` dalam kategori ${categories.join(", ")}` : ""
+  }.`;
 
   return (
     <div className="grid gap-y-10 px-5 pb-4 md:pl-[5.7%] md:pr-[8.5%] lg:grid-cols-[minmax(0,1fr)_449px] lg:gap-x-[117px]">
@@ -51,7 +57,7 @@ export default async function KnowledgeGroupPage({
           {title}
         </h1>
         <p className="mt-[5px] max-w-[624px] text-pretty text-[15.2px] leading-[21.2px] text-[#525252]">
-          {groupDescription}
+          {description}
         </p>
         <p className="mt-1 flex items-center gap-[6px] text-[15.2px] font-bold leading-[36px] text-[#737373]">
           <Image src="/knowledge/clock-detail.svg" alt="" width={12} height={12} />
@@ -77,12 +83,12 @@ export default async function KnowledgeGroupPage({
             </span>
           </div>
           <ul>
-            {documents.map((doc, i) => (
-              <DocumentRow key={doc.name} doc={doc} first={i === 0} />
+            {group.documents.map((doc, i) => (
+              <DocumentRow key={doc.id} doc={doc} first={i === 0} index={i} />
             ))}
           </ul>
           <p className="border-t border-[#e5e5e5] pt-[13px] text-right text-base leading-6 text-[#737373]">
-            Menampilkan {documents.length} dokumen terverifikasi
+            Menampilkan {group.documents.length} dokumen terverifikasi
           </p>
         </section>
       </div>
@@ -97,25 +103,9 @@ export default async function KnowledgeGroupPage({
             Referensi tersimpan di Google Drive
           </h2>
           <p className="mt-2 text-[14.2px] leading-[22px] text-[#525252]">
-            Semua dokumen group ini dikelola dalam satu folder Google Drive
-            resmi KM ITS. Anda dapat melihat pratinjau, mengunduh lampiran asli,
-            atau menyalin template kerja langsung.
+            Semua dokumen group ini dikelola di Google Drive resmi KM ITS. Pilih
+            dokumen pada daftar untuk membuka salinan aslinya di tab baru.
           </p>
-          <div className="mt-auto flex flex-col gap-2 pt-5">
-            <a
-              href={group.driveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-[49px] items-center justify-center gap-2 rounded-xl bg-navy text-base text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#1c3369]"
-            >
-              Buka folder Google Drive
-              <Image src="/knowledge/external-white.svg" alt="" width={14} height={14} />
-            </a>
-            <p className="flex items-center justify-center gap-[6px] pt-1 text-base leading-6 text-[#737373]">
-              <Image src="/knowledge/info.svg" alt="" width={17} height={17} />
-              Membuka drive.google.com di tab baru.
-            </p>
-          </div>
         </div>
 
         <div className="mt-[22px] rounded-2xl border border-[#e5e5e5] bg-white p-[25px] shadow-[0_1px_1px_rgba(0,0,0,0.05)]">

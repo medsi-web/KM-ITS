@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import { inset, px } from "./geometry";
 import NavLinks from "./NavLinks";
 import "./navbar.css";
@@ -30,7 +31,10 @@ export default function Navbar() {
           >
             Portal KM ITS
           </Link>
-          <NavLinks />
+          {/* usePathname() is runtime data on routes whose params are unknown at build time. */}
+          <Suspense fallback={null}>
+            <NavLinks />
+          </Suspense>
         </header>
       </div>
     </div>

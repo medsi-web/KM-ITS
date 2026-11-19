@@ -1,85 +1,76 @@
 /**
- * Sample data for the KM ITS Knowledge pages. Every group points at a Google
- * Drive folder; replace this module with the real source when it exists.
+ * Knowledge groups for the KM ITS Knowledge pages. The archives API has no
+ * "group" concept, so a group is the set of visible archive documents that
+ * share a `ministryId`. Pure helpers only; the fetch lives in `archives.ts`.
  */
 
-export type KnowledgeGroup = {
-  slug: string;
-  /** Name shown on the list card. */
-  name: string;
-  /** Heading on the group page, when it differs from `name`. */
-  title?: string;
-  summary: string;
-  documentCount: number;
-  /** ISO date (UTC). */
+/** One item of `GET /api/archives` (see `publicArchive` in the backend). */
+export type PublicArchive = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  year: number | null;
+  authors: string[];
+  ministryId: string;
+  /** ISO timestamp. */
   updatedAt: string;
-  driveUrl: string;
+  /** Redirects to the verified PDF on Drive. */
+  openUrl: string;
 };
 
 export type KnowledgeDocument = {
+  id: string;
   name: string;
   meta: string;
-  type: "PDF" | "DOCX";
-  size: string;
+  category: string;
+  openUrl: string;
 };
 
-export const groups: KnowledgeGroup[] = [
-  {
-    slug: "kastrat-kebijakan-publik",
-    name: "Kastrat & Kebijakan Publik",
-    title: "Kajian Strategis & Kebijakan Kampus",
-    summary: "Kajian strategis nasional, notula konsolidasi isu…",
-    documentCount: 34,
-    updatedAt: "2026-03-14",
-    driveUrl: "https://drive.google.com",
-  },
-  {
-    slug: "advokasi-kesejahteraan-mahasiswa",
-    name: "Advokasi & Kesejahteraan Mahasiswa",
-    summary: "Panduan banding UKT, berkas beasiswa terpadu,…",
-    documentCount: 52,
-    updatedAt: "2026-03-12",
-    driveUrl: "https://drive.google.com",
-  },
-  {
-    slug: "kaderisasi-psdm",
-    name: "Kaderisasi & PSDM",
-    summary: "Silabus LKMM tingkat dasar dan madya, rubrik evaluasi…",
-    documentCount: 28,
-    updatedAt: "2026-03-10",
-    driveUrl: "https://drive.google.com",
-  },
-];
+export type KnowledgeGroup = {
+  /** The ministry id. */
+  slug: string;
+  name: string;
+  summary: string;
+  documentCount: number;
+  /** ISO timestamp of the newest document. */
+  updatedAt: string;
+  documents: KnowledgeDocument[];
+};
 
-export const groupDescription =
-  "Deskripsi lengkap group: topik yang dibahas, jenis dokumen di dalamnya, dan siapa yang dapat memanfaatkannya. Berisi penjelasan komprehensif mengenai latar belakang penyusunan arsip, panduan teknis, serta pedoman implementasi kegiatan organisasi dilingkungan KM ITS.";
+// shortcut: the API gives only an opaque ministryId, so the display name is
+// derived from it; add a label map when the real ministry ids are known.
+const humanize = (id: string) =>
+  id
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
 
-export const documents: KnowledgeDocument[] = [
-  {
-    name: "Draft Pedoman Advokasi & Banding UKT 2026.pdf",
-    meta: "Diupload oleh Kemensospol • Salinan Resmi",
-    type: "PDF",
-    size: "2.4 MB",
-  },
-  {
-    name: "Template Naskah Kajian Kebijakan Publik KM ITS.docx",
-    meta: "Format Baku Rilis Sikap Terbuka",
-    type: "DOCX",
-    size: "840 KB",
-  },
-  {
-    name: "Rekapitulasi Notula Audiensi Rektorat Q1 2026.pdf",
-    meta: "Arsip Notulensi BEM KM ITS & Ditmawa",
-    type: "PDF",
-    size: "1.2 MB",
-  },
-  {
-    name: "Panduan Prosedur Standar Operasional Ormawa.pdf",
-    meta: "Revisi Regulasi Tata Kelola Sekretariat",
-    type: "PDF",
-    size: "3.1 MB",
-  },
-];
+/** Group archives by ministry. Documents keep the API order (newest first). */
+export function groupArchives(archives: PublicArchive[]): KnowledgeGroup[] {
+  const byMinistry = new Map<string, PublicArchive[]>();
+  for (const a of archives) {
+    byMinistry.set(a.ministryId, [...(byMinistry.get(a.ministryId) ?? []), a]);
+  }
+
+  return [...byMinistry].map(([ministryId, items]) => ({
+    slug: ministryId,
+    name: humanize(ministryId),
+    summary: items.slice(0, 2).map((a) => a.title).join(", "),
+    documentCount: items.length,
+    updatedAt: items.reduce((m, a) => (a.updatedAt > m ? a.updatedAt : m), ""),
+    documents: items.map((a) => ({
+      id: a.id,
+      name: a.title,
+      meta:
+        [a.category, a.year, a.authors.join(", ")].filter(Boolean).join(" • ") ||
+        "Dokumen PDF",
+      category: a.category,
+      openUrl: a.openUrl,
+    })),
+  }));
+}
 
 export const sortOptions = [
   { value: "relevansi", label: "Relevansi" },
@@ -95,21 +86,18 @@ export function parseSort(value: string | undefined): SortValue {
     : "relevansi";
 }
 
-export function getGroup(slug: string) {
-  return groups.find((g) => g.slug === slug);
-}
-
-/** Case-insensitive match on name, title and summary, ordered by `sort`. */
-export function searchGroups(query: string, sort: SortValue) {
+/** Case-insensitive match on group name, summary and document titles, ordered by `sort`. */
+export function searchGroups(
+  groups: KnowledgeGroup[],
+  query: string,
+  sort: SortValue,
+) {
   const q = query.trim().toLowerCase();
-  const rank = (g: KnowledgeGroup) =>
-    g.name.toLowerCase().includes(q) || g.title?.toLowerCase().includes(q)
-      ? 0
-      : 1;
+  const rank = (g: KnowledgeGroup) => (g.name.toLowerCase().includes(q) ? 0 : 1);
 
   const found = q
     ? groups.filter((g) =>
-        [g.name, g.title ?? "", g.summary].some((t) =>
+        [g.name, g.summary, ...g.documents.map((d) => d.name)].some((t) =>
           t.toLowerCase().includes(q),
         ),
       )
