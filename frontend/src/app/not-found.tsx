@@ -13,7 +13,7 @@ export default function NotFound() {
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-ink px-6 py-24 text-center text-white">
       <Image
-        src="/not-found/photo.png"
+        src="/not-found/404.png"
         alt=""
         fill
         priority
