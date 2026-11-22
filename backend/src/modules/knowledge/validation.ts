@@ -29,10 +29,13 @@ function driveUrl(value: unknown): string {
   const raw = text(value, "driveUrl", 500, true);
   let url: URL;
   try { url = new URL(raw); } catch { invalid("driveUrl", "must be a URL"); }
-  if (url.protocol !== "https:" || url.username || url.password || !["drive.google.com", "docs.google.com"].includes(url.hostname)) {
+  if (url.protocol !== "https:" || url.username || url.password || url.port || !["drive.google.com", "docs.google.com"].includes(url.hostname)) {
     invalid("driveUrl", "must be an https://drive.google.com or https://docs.google.com link");
   }
-  return url.toString();
+  // The stored form is percent-encoded, so the limit applies after normalizing.
+  const normalized = url.toString();
+  if (normalized.length > 500) invalid("driveUrl", "must be at most 500 characters once encoded");
+  return normalized;
 }
 
 function ministry(value: unknown): string {

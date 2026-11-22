@@ -1,24 +1,28 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
 import { filterValue, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
 import { pathId } from "../../lib/request.ts";
-import { visibleQuery } from "../archives/public.ts";
+import { ARCHIVE_LIST_COLLATION, visibleQuery } from "../archives/public.ts";
 import { getArchiveStore } from "../archives/store.ts";
 import { getKnowledgeStore, type KnowledgeGroup } from "./store.ts";
 import { SLUG } from "./validation.ts";
 
 export interface GroupStats { documentCount: number; lastDocumentAt: Date | null }
 
-/** Visible document count and newest visible document per ministry. */
-export async function groupStats(ministryIds: string[]): Promise<Map<string, GroupStats>> {
+/**
+ * Visible document count and newest visible document per ministry, matched
+ * case-insensitively like `/api/archives?ministryId=`.
+ */
+export async function groupStats(ministryIds: string[]): Promise<{ get(ministryId: string): GroupStats | undefined }> {
   const stats = new Map<string, GroupStats>();
-  if (!ministryIds.length) return stats;
+  const view = { get: (ministryId: string) => stats.get(ministryId.toLowerCase()) };
+  if (!ministryIds.length) return view;
   const { archives } = await getArchiveStore();
   const rows = await archives.aggregate<{ _id: string; documentCount: number; lastDocumentAt: Date }>([
     { $match: { ...visibleQuery, ministryId: { $in: ministryIds } } },
     { $group: { _id: "$ministryId", documentCount: { $sum: 1 }, lastDocumentAt: { $max: "$updatedAt" } } },
-  ]).toArray();
-  for (const row of rows) stats.set(row._id, { documentCount: row.documentCount, lastDocumentAt: row.lastDocumentAt });
-  return stats;
+  ], { collation: ARCHIVE_LIST_COLLATION }).toArray();
+  for (const row of rows) stats.set(row._id.toLowerCase(), { documentCount: row.documentCount, lastDocumentAt: row.lastDocumentAt });
+  return view;
 }
 
 export function publicGroup(group: KnowledgeGroup, stats?: GroupStats) {

@@ -82,6 +82,7 @@ test("admins create, edit, hide and delete groups with CSRF, revisions, uniquene
   assert.equal((await json(await knowledgeCreate(call("POST", "/api/admin/knowledge-groups", group(), tokens.temporary)), 403) as { code: string }).code, "PASSWORD_CHANGE_REQUIRED");
 
   for (const invalid of [group({ ministryId: "unknown" }), group({ driveUrl: "http://drive.google.com/x" }), group({ driveUrl: "https://evil.example/drive.google.com" }),
+    group({ driveUrl: "https://drive.google.com:444/x" }), group({ driveUrl: `https://drive.google.com/${"é".repeat(200)}` }),
     group({ name: " " }), group({ description: undefined }), group({ slug: "Bad Slug" }), group({ order: -1 }), group({ notes: "x" })]) {
     assert.equal((await json(await knowledgeCreate(call("POST", "/api/admin/knowledge-groups", invalid)), 400) as { code: string }).code, "INVALID_KNOWLEDGE_GROUP", JSON.stringify(invalid));
   }
@@ -89,10 +90,11 @@ test("admins create, edit, hide and delete groups with CSRF, revisions, uniquene
   await document("finance", new Date("2026-01-02T00:00:00Z"));
   await document("finance", new Date("2026-01-05T00:00:00Z"));
   await document("finance", new Date("2026-02-01T00:00:00Z"), false);
+  await document("FINANCE", new Date("2026-01-03T00:00:00Z"));
   const created = await json<Admin>(await knowledgeCreate(call("POST", "/api/admin/knowledge-groups", group())));
   assert.equal(created.slug, "kastrat-kebijakan-publik");
   assert.equal(created.revision, 1);
-  assert.equal(created.documentCount, 2, "only visible documents count");
+  assert.equal(created.documentCount, 3, "only visible documents count, matched like the archive filter (case-insensitive)");
   assert.equal(created.lastDocumentAt, "2026-01-05T00:00:00.000Z");
 
   assert.equal((await json(await knowledgeCreate(call("POST", "/api/admin/knowledge-groups", group({ slug: "other" }))), 409) as { code: string }).code, "KNOWLEDGE_GROUP_EXISTS");
@@ -118,7 +120,7 @@ test("admins create, edit, hide and delete groups with CSRF, revisions, uniquene
   assert.equal((await knowledgeDelete(call("DELETE", path, undefined, tokens.admin, false))).status, 403);
   assert.deepEqual(await json(await knowledgeDelete(call("DELETE", path))), { id: created.id, deleted: true });
   assert.equal((await knowledgeDelete(call("DELETE", path))).status, 404);
-  assert.equal(await archiveCollections(await getDatabase()).archives.countDocuments({ ministryId: "finance" }), 3, "documents stay after deleting the group");
+  assert.equal(await archiveCollections(await getDatabase()).archives.countDocuments({ ministryId: { $in: ["finance", "FINANCE"] } }), 4, "documents stay after deleting the group");
 
   const audit = await authCollections(await getDatabase()).audit.find({ targetId: created.id }).sort({ at: 1 }).toArray();
   assert.deepEqual(audit.map(entry => entry.action), ["knowledge.created", "knowledge.updated", "knowledge.updated", "knowledge.updated", "knowledge.deleted"]);

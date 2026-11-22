@@ -7,6 +7,9 @@ import { getArchiveStore } from "./store.ts";
 import { isArchiveVisible } from "./models.ts";
 import type { ArchiveRecord } from "./models.ts";
 
+// Case-insensitive collation keeps title ordering natural and makes filters
+// case-insensitive; knowledge group counts use the same rules.
+export const ARCHIVE_LIST_COLLATION = { locale: "id", strength: 2 };
 export const visibleQuery = { sourceState: "VALID" as const, manualHidden: false, snapshot: { $ne: null }, "snapshot.pdf.publicReadable": true };
 
 function notFound() { return new ApiError(404, "ARCHIVE_NOT_FOUND", "The archive document was not found."); }
@@ -67,8 +70,7 @@ export const archivesList = defineHandler("archives.list", async (request) => {
   const page = readPagination(url, 20, 100);
   const { filter, sort } = archiveListQuery(url);
   const { archives } = await getArchiveStore();
-  // Case-insensitive collation keeps title ordering natural ("apel" next to "Apel").
-  return findPage(archives, filter, sort, page, publicArchive, { locale: "id", strength: 2 });
+  return findPage(archives, filter, sort, page, publicArchive, ARCHIVE_LIST_COLLATION);
 });
 
 export const archivesDetail = defineHandler("archives.detail", async (request) => {

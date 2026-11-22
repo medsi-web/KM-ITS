@@ -36,15 +36,15 @@ async function assertAvailable(store: KnowledgeStore, fields: Partial<GroupField
   }
 }
 
-function duplicateKey(error: unknown): boolean {
-  return !!error && typeof error === "object" && "code" in error && error.code === 11000;
-}
-
-async function mutate<T>(action: (session: ClientSession) => Promise<T>, auth: Awaited<ReturnType<typeof getAuthStore>>): Promise<T> {
+// accessTransaction maps raw duplicate keys to an account error, so a unique
+// index violation is translated here, inside the transaction callback.
+async function write(operation: () => Promise<unknown>): Promise<void> {
   try {
-    return await accessTransaction(auth, action);
+    await operation();
   } catch (error) {
-    if (duplicateKey(error)) throw new ApiError(409, "KNOWLEDGE_GROUP_EXISTS", "The slug or ministry is already used by another knowledge group.");
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      throw new ApiError(409, "KNOWLEDGE_GROUP_EXISTS", "The slug or ministry is already used by another knowledge group.");
+    }
     throw error;
   }
 }
@@ -75,17 +75,17 @@ export const knowledgeCreate = defineHandler("knowledge.create", async (request)
   const fields = parseCreate(await readJsonObject(request));
   const auth = await getAuthStore();
   const store = await getKnowledgeStore();
-  const group = await mutate(async (session) => {
+  const group = await accessTransaction(auth, async (session) => {
     const actor = await assertCurrentActor(auth, context, session, false);
     await assertAvailable(store, fields, session);
     const now = new Date();
     const record: KnowledgeGroup = { _id: randomUUID(), ...fields, revision: 1, createdBy: actor._id, updatedBy: actor._id, createdAt: now, updatedAt: now };
-    await store.groups.insertOne(record, { session });
+    await write(() => store.groups.insertOne(record, { session }));
     await audit(auth, session, "knowledge.created", actor._id, record._id, {
       actor: { id: actor._id, username: actor.username, role: actor.role }, after: auditState(record),
     });
     return record;
-  }, auth);
+  });
   return adminGroup(group, (await groupStats([group.ministryId])).get(group.ministryId));
 });
 
@@ -96,7 +96,7 @@ export const knowledgeUpdate = defineHandler("knowledge.update", async (request)
   const id = pathId(request) ?? "";
   const auth = await getAuthStore();
   const store = await getKnowledgeStore();
-  const group = await mutate(async (session) => {
+  const group = await accessTransaction(auth, async (session) => {
     const actor = await assertCurrentActor(auth, context, session, false);
     const before = await store.groups.findOne({ _id: id }, { session });
     if (!before) throw notFound();
@@ -105,12 +105,12 @@ export const knowledgeUpdate = defineHandler("knowledge.update", async (request)
     }
     await assertAvailable(store, changes, session, id);
     const after: KnowledgeGroup = { ...before, ...changes, revision: before.revision + 1, updatedBy: actor._id, updatedAt: new Date() };
-    await store.groups.replaceOne({ _id: id }, after, { session });
+    await write(() => store.groups.replaceOne({ _id: id }, after, { session }));
     await audit(auth, session, "knowledge.updated", actor._id, id, {
       actor: { id: actor._id, username: actor.username, role: actor.role }, before: auditState(before), after: auditState(after),
     });
     return after;
-  }, auth);
+  });
   return adminGroup(group, (await groupStats([group.ministryId])).get(group.ministryId));
 });
 
@@ -121,7 +121,7 @@ export const knowledgeDelete = defineHandler("knowledge.delete", async (request)
   const id = pathId(request) ?? "";
   const auth = await getAuthStore();
   const store = await getKnowledgeStore();
-  return mutate(async (session) => {
+  return accessTransaction(auth, async (session) => {
     const actor = await assertCurrentActor(auth, context, session, false);
     const before = await store.groups.findOne({ _id: id }, { session });
     if (!before) throw notFound();
@@ -130,5 +130,5 @@ export const knowledgeDelete = defineHandler("knowledge.delete", async (request)
       actor: { id: actor._id, username: actor.username, role: actor.role }, before: auditState(before),
     });
     return { id, deleted: true };
-  }, auth);
+  });
 });
