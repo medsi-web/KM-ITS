@@ -7,6 +7,7 @@ import { articleSettings } from "../src/modules/articles/config.ts";
 import { initializeArticles } from "../src/modules/articles/store.ts";
 import { archiveSources } from "../src/modules/archives/sources.ts";
 import { initializeArchives } from "../src/modules/archives/store.ts";
+import { initializeKnowledge } from "../src/modules/knowledge/store.ts";
 import { timelineSettings } from "../src/modules/events/config.ts";
 import { initializeEvents } from "../src/modules/events/store.ts";
 
@@ -16,8 +17,8 @@ const features = {
   archives: {
     name: "Archive",
     validate: archiveSources,
-    initialize: initializeArchives,
-    ready: sources => `Archive indexes are ready; ${sources.length} environment source registrations validated.`,
+    initialize: async database => { await initializeArchives(database); await initializeKnowledge(database); },
+    ready: sources => `Archive and knowledge group indexes are ready; ${sources.length} source registrations validated.`,
   },
   timeline: {
     name: "Timeline",

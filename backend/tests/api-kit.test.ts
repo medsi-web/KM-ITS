@@ -6,7 +6,7 @@ import { endpoints } from "../src/contracts/endpoints.ts";
 
 test("every declared method has a real thin Next.js adapter pointing to a backend export", async () => {
   for (const [id, endpoint] of Object.entries(endpoints)) {
-    const route = endpoint.path.replace("{id}", "[id]");
+    const route = endpoint.path.replace(/\{(\w+)\}/g, "[$1]");
     const adapter = await readFile(new URL(`../../frontend/src/app${route}/route.ts`, import.meta.url), "utf8");
     const symbol = id.startsWith("system.") ? id.split(".")[1] : id.replace(/\.(.)/g, (_, letter: string) => letter.toUpperCase());
     assert.ok(adapter.includes(`${symbol} as ${endpoint.method}`), `${id} HTTP export`);

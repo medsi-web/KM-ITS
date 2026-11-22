@@ -7,7 +7,7 @@ import { getArchiveStore } from "./store.ts";
 import { isArchiveVisible } from "./models.ts";
 import type { ArchiveRecord } from "./models.ts";
 
-const visibleQuery = { sourceState: "VALID" as const, manualHidden: false, snapshot: { $ne: null }, "snapshot.pdf.publicReadable": true };
+export const visibleQuery = { sourceState: "VALID" as const, manualHidden: false, snapshot: { $ne: null }, "snapshot.pdf.publicReadable": true };
 
 function notFound() { return new ApiError(404, "ARCHIVE_NOT_FOUND", "The archive document was not found."); }
 

@@ -6,19 +6,21 @@ untouched; the API implementation adds no admin, Archive, Timeline or Article UI
 
 ## Implemented scope
 
-The inventory contains **33 HTTP operations, all implemented**.
+The inventory contains **39 HTTP operations, all implemented**.
 
 - System liveness and MongoDB readiness.
 - Local username/password login, session inspection, logout and password change.
 - Super-admin account listing, creation, changes and temporary password reset.
 - Archive ingestion, admin list/detail, manual hide/unhide, public reads and verified PDF open redirects.
+- Knowledge groups: one admin-managed group per ministry (name, description, Drive
+  link, order, hidden) with public list/detail and admin CRUD. See [docs/knowledge.md](../docs/knowledge.md).
 - Timeline: Google Calendar event batch sync, public list/detail with window and
   status filters, admin list/detail and manual hiding.
 - Articles: Google Form submission batch sync, admin review queue, draft editing,
   revision-checked publish and unpublish, public list/detail.
 - Sync logs for archives, events and articles through one admin endpoint.
 
-No Apps Script connector is implemented. Readiness checks database connectivity;
+The Apps Script connectors are in [apps-script/](apps-script/README.md). Readiness checks database connectivity;
 it does not certify indexes, registered sources or Google permissions.
 
 ## Local setup
@@ -148,7 +150,8 @@ Public list/detail return sanitized metadata and an application open URL only fo
 currently visible records. The list accepts `ministryId`, `category` and `year`
 filters, a case-insensitive `q` search over title, description, category and
 authors, `sort=newest|oldest|title`, and `limit`/`offset`. Grouping by ministry
-is done by the client with `ministryId`. Opening a document verifies its current PDF
+uses `ministryId`; `GET /api/knowledge-groups` returns each ministry's group with its
+document count. Opening a document verifies its current PDF
 through Drive, then redirects to the Drive viewer. Hidden or unavailable records
 return `404`; temporary verification failures may return `503`.
 

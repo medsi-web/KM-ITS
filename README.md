@@ -3,12 +3,13 @@
 A pnpm workspace with one Next.js application in `frontend/` and a server-only
 `@kmits/backend` package. Both run in the same Next.js process.
 
-The API inventory contains **33 operations, all implemented**: system health,
+The API inventory contains **39 operations, all implemented**: system health,
 local username/password admin access, account management, Archive ingestion and
-publication, Timeline (Google Calendar) event sync and visibility, Article
-(Google Form) review and publication, and per-source sync logs. Frontend pages
-are maintained separately; this backend work changes only the HTTP adapters
-under the frontend package. Apps Script connectors are not part of this repository.
+publication, Knowledge groups, Timeline (Google Calendar) event sync and
+visibility, Article (Google Form) review and publication, and per-source sync
+logs. Frontend pages are maintained separately; this backend work changes only
+the HTTP adapters under the frontend package. The Apps Script connectors live in
+[backend/apps-script](backend/apps-script/README.md).
 
 ## Structure
 
