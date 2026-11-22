@@ -38,7 +38,7 @@ function probeStatus(id, endpoint) {
   if (endpoint.access === "integration") return 'Number(pm.environment.get("integrationProbeStatus") || "401")';
   if (id === "auth.login") return 'Number(pm.environment.get("loginExpectedStatus") || "401")';
   if (id === "system.ready") return 'Number(pm.environment.get("readyExpectedStatus") || "503")';
-  return ["system.health", "archives.list", "events.list", "articles.list"].includes(id) ? 200 : 404;
+  return ["system.health", "archives.list", "events.list", "articles.list", "knowledge.list"].includes(id) ? 200 : 404;
 }
 
 export function probeCollection(endpoints) {

@@ -15,6 +15,7 @@ import { bootstrapSuperAdmin } from "../src/modules/auth/identity.ts";
 import { hashPassword } from "../src/modules/auth/password.ts";
 import { authCollections, initializeAuth } from "../src/modules/auth/store.ts";
 import { initializeArchives, archiveCollections } from "../src/modules/archives/store.ts";
+import { initializeKnowledge } from "../src/modules/knowledge/store.ts";
 import { initializeEvents } from "../src/modules/events/store.ts";
 import { initializeArticles } from "../src/modules/articles/store.ts";
 import { ingestionSecretHash } from "../src/integrations/apps-script.ts";
@@ -47,6 +48,7 @@ try {
   const database = await getDatabase();
   await initializeAuth(database);
   await initializeArchives(database);
+  await initializeKnowledge(database);
   await initializeEvents(database);
   await initializeArticles(database);
   const store = authCollections(database);

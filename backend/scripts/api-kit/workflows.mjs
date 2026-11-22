@@ -62,7 +62,33 @@ const archiveSteps = [
   item("Restore archive visibility", "POST", "/api/admin/archives/{{archiveId}}/publish", {}, 200, ['pm.test("Visible",()=>pm.expect(pm.response.json().data.effectiveVisibility).to.eql(true));']),
   item("Restored public detail", "GET", archivePath, undefined, 200, [], anonymous),
   item("Read sync logs", "GET", "/api/admin/sync-logs?streamId=http-test-stream", undefined, 200, ['pm.test("Recorded deliveries",()=>pm.expect(pm.response.json().data.items.length).to.be.at.least(2));']),
+  ...knowledgeSteps(),
 ];
+
+// ---- Knowledge groups (run inside the Archive workflow, after its fixture) ---
+
+function knowledgeSteps() {
+  const group = { ministryId: "http-ministry", name: "Kementerian Uji", description: "Grup pengujian HTTP", driveUrl: "https://drive.google.com/drive/folders/http-folder" };
+  const captureGroup = 'const d=pm.response.json().data; pm.environment.set("groupId",d.id); pm.environment.set("groupRevision",d.revision);';
+  const groupAdmin = "/api/admin/knowledge-groups/{{groupId}}";
+  return [
+    item("No public knowledge groups yet", "GET", "/api/knowledge-groups", undefined, 200, total(0), anonymous),
+    item("Admin sees the ministry without a group", "GET", "/api/admin/knowledge-groups", undefined, 200, ['pm.test("Unassigned",()=>pm.expect(pm.response.json().data.unassignedMinistries).to.include("http-ministry"));']),
+    item("Group creation requires CSRF", "POST", "/api/admin/knowledge-groups", group, 403, [assertCode("CSRF_REJECTED")], { csrf: false }),
+    item("Unregistered ministry is rejected", "POST", "/api/admin/knowledge-groups", { ...group, ministryId: "unknown-ministry" }, 400, [assertCode("INVALID_KNOWLEDGE_GROUP")]),
+    item("Non-Drive link is rejected", "POST", "/api/admin/knowledge-groups", { ...group, driveUrl: "https://example.com/folder" }, 400, [assertCode("INVALID_KNOWLEDGE_GROUP")]),
+    item("Create knowledge group", "POST", "/api/admin/knowledge-groups", group, 200, [captureGroup, 'pm.test("Slug from name",()=>pm.expect(pm.response.json().data.slug).to.eql("kementerian-uji"));']),
+    item("One group per ministry", "POST", "/api/admin/knowledge-groups", { ...group, slug: "lain" }, 409, [assertCode("KNOWLEDGE_GROUP_EXISTS")]),
+    item("Public group list counts documents", "GET", "/api/knowledge-groups", undefined, 200, [...total(1), 'pm.test("Document count",()=>pm.expect(pm.response.json().data.items[0].documentCount).to.eql(1));'], anonymous),
+    item("Public group detail by slug", "GET", "/api/knowledge-groups/kementerian-uji", undefined, 200, ['pm.test("Drive link",()=>pm.expect(pm.response.json().data.driveUrl).to.include("drive.google.com"));'], anonymous),
+    item("Edit with old revision", "PATCH", groupAdmin, { revision: 99, name: "Lost update" }, 409, [assertCode("KNOWLEDGE_GROUP_CHANGED")]),
+    item("Hide knowledge group", "PATCH", groupAdmin, '{"revision":{{groupRevision}},"hidden":true}', 200, [captureGroup, 'pm.test("Hidden",()=>pm.expect(pm.response.json().data.hidden).to.eql(true));']),
+    item("Hidden group detail is 404", "GET", "/api/knowledge-groups/kementerian-uji", undefined, 404, [assertCode("KNOWLEDGE_GROUP_NOT_FOUND")], anonymous),
+    item("Delete knowledge group", "DELETE", groupAdmin, undefined, 200, ['pm.test("Deleted",()=>pm.expect(pm.response.json().data.deleted).to.eql(true));']),
+    item("Deleted group is gone", "GET", "/api/admin/knowledge-groups", undefined, 200, total(0)),
+    item("Archive documents stay after deletion", "GET", "/api/archives?ministryId=http-ministry", undefined, 200, total(1), anonymous),
+  ];
+}
 
 // ---- Timeline ----------------------------------------------------------------
 
