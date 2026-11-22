@@ -45,7 +45,7 @@ export function probeCollection(endpoints) {
   const probes = Object.entries(endpoints).map(([id, endpoint]) => {
     const protectedRoute = ["admin", "super-admin"].includes(endpoint.access);
     const body = id === "auth.login" ? { username: "nonexistent-probe", password: "incorrect probe password" } : endpoint.method !== "GET" ? {} : undefined;
-    return item(`${endpoint.method} ${endpoint.path}`, endpoint.method, endpoint.path.replace("{id}", "{{recordId}}"), body,
+    return item(`${endpoint.method} ${endpoint.path}`, endpoint.method, endpoint.path.replace(/\{\w+\}/g, "{{recordId}}"), body,
       probeStatus(id, endpoint), protectedRoute ? [assertCode("UNAUTHENTICATED")] : [], { session: false, csrf: false });
   });
   return {

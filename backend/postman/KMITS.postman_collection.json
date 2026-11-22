@@ -594,7 +594,7 @@
       },
       "request": {
         "method": "GET",
-        "url": "{{baseUrl}}/api/knowledge-groups/{slug}",
+        "url": "{{baseUrl}}/api/knowledge-groups/{{recordId}}",
         "header": []
       },
       "event": [
