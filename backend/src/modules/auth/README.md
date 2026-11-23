@@ -1,6 +1,6 @@
 # Admin authentication
 
-Admin authentication uses local, case-insensitive usernames and Argon2id password hashes. Usernames contain 3-64 ASCII letters, numbers, dots, underscores or hyphens and start with a letter or number. Passwords contain 12-128 characters and at most 512 UTF-8 bytes. Argon2id uses 19 MiB memory, two iterations and one lane. Plain passwords and session tokens never enter the database or audit log.
+Admin authentication uses local, case-insensitive usernames and Argon2id password hashes. Usernames contain 3-64 ASCII letters, numbers, dots, underscores or hyphens and start with a letter or number. There is no password policy: any non-empty password is accepted (owner decision). Argon2id uses 19 MiB memory, two iterations and one lane. Plain passwords and session tokens never enter the database or audit log.
 
 Set APP_ORIGIN to the exact website origin. Run `pnpm --filter @kmits/backend auth:setup` against a MongoDB replica set. For a fresh database set `auth.bootstrapSuperAdminUsername` in `kmits.config.json` (or BOOTSTRAP_SUPER_ADMIN_USERNAME), run `pnpm auth:hash` to turn your password into an Argon2id hash, put the printed BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH line in the environment, and run `pnpm --filter @kmits/backend auth:bootstrap`. Bootstrap refuses plaintext passwords and hashes weaker than the login cost (m=19456, t=2). There are no default credentials. Remove bootstrap credentials from the environment after provisioning. Bootstrap is serialized and refuses a nonempty account store.
 

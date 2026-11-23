@@ -21,12 +21,12 @@ function ask(prompt) {
 try {
   let password;
   if (process.stdin.isTTY) {
-    password = await ask("New password (12-128 characters): ");
+    password = await ask("New password: ");
     if ((await ask("Repeat password: ")) !== password) throw new Error("Passwords do not match.");
   } else {
     password = await readPiped();
   }
-  if (!validPassword(password)) throw new Error("Password must contain 12 to 128 characters.");
+  if (!validPassword(password)) throw new Error("Password must not be empty.");
   console.log(`\nBOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH='${await hashPassword(password)}'`);
   console.log("\nPut this line in frontend/.env.local (or the server's secret store), then run pnpm auth:bootstrap.");
 } catch (error) {

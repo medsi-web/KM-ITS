@@ -57,9 +57,12 @@ test("Argon2id hashes have the configured cost, independent salts and bounded in
   assert.equal(await verifyPassword(first, password), true);
   assert.equal(await verifyPassword(first, "wrong-password"), false);
   assert.equal(await verifyPassword(undefined, password), false);
-  assert.equal(validPassword("a".repeat(11)), false);
-  assert.equal(validPassword("a".repeat(129)), false);
-  await assert.rejects(hashPassword("short"), ApiError);
+  // No password policy: short and long passwords are accepted; only empty is not.
+  assert.equal(validPassword("a"), true);
+  assert.equal(validPassword("a".repeat(1000)), true);
+  assert.equal(await verifyPassword(await hashPassword("x"), "x"), true);
+  assert.equal(validPassword(""), false);
+  await assert.rejects(hashPassword(""), ApiError);
 });
 
 test("bootstrap accepts only Argon2id hashes with at least the configured cost", async () => {

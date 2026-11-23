@@ -5334,10 +5334,9 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128,
+            "minLength": 1,
             "writeOnly": true,
-            "description": "At most 512 UTF-8 bytes."
+            "description": "No password policy; any non-empty string."
           }
         },
         "required": [
@@ -5351,17 +5350,15 @@
         "properties": {
           "oldPassword": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128,
+            "minLength": 1,
             "writeOnly": true,
-            "description": "At most 512 UTF-8 bytes."
+            "description": "No password policy; any non-empty string."
           },
           "newPassword": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128,
+            "minLength": 1,
             "writeOnly": true,
-            "description": "At most 512 UTF-8 bytes."
+            "description": "No password policy; any non-empty string."
           }
         },
         "required": [

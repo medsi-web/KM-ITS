@@ -11,7 +11,7 @@ const page = schema => object({ items: { type: "array", items: schema }, total: 
 // ---- Schemas -------------------------------------------------------------
 
 const username = { type: "string", minLength: 3, maxLength: 64, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$" };
-const password = { type: "string", minLength: 12, maxLength: 128, writeOnly: true, description: "At most 512 UTF-8 bytes." };
+const password = { type: "string", minLength: 1, writeOnly: true, description: "No password policy; any non-empty string." };
 const role = { type: "string", enum: ["ADMIN", "SUPER_ADMIN"] };
 const meta = object({ requestId: { type: "string", format: "uuid" }, timestamp: { type: "string", format: "date-time" } });
 const decimal = { type: "string", pattern: "^(0|[1-9][0-9]{0,99})$" };
