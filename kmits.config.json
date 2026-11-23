@@ -13,7 +13,7 @@
   "archive": {
     "$comment": "One entry per ministry Drive folder: { \"streamId\": \"...\", \"ministryId\": \"...\", \"folderId\": \"...\" }. Never rename an existing streamId.",
     "sources": [],
-    "driveServiceAccountEmail": ""
+    "driveServiceAccountEmail": "kmits-drive-reader@kmits-backend-p6emhy.iam.gserviceaccount.com"
   },
   "timeline": {
     "calendarId": "",

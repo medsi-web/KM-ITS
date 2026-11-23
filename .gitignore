@@ -56,3 +56,6 @@ next-env.d.ts
 # clasp project binding and credentials (per account)
 .clasp.json
 .clasprc.json
+
+# Local Apps Script Script Properties (contain the ingestion secret)
+backend/apps-script/*.local.json
