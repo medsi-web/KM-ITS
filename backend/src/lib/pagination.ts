@@ -33,6 +33,11 @@ export async function findPage<T extends Document, V>(collection: Collection<T>,
   return { items: records.map(view), total, limit: page.limit, offset: page.offset };
 }
 
+// A case-insensitive substring match; regex characters in the input match literally.
+export function searchPattern(value: string) {
+  return { $regex: value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+}
+
 // An optional exact-match filter value with a length bound.
 export function filterValue(url: URL, key: string, maxLength: number): string | undefined {
   const value = url.searchParams.get(key);

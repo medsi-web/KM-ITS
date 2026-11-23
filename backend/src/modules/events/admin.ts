@@ -2,7 +2,7 @@ import { ApiError, defineHandler, readJsonObject } from "../../lib/http.ts";
 import { filterValue, findPage, readPagination } from "../../lib/pagination.ts";
 import { pathId } from "../../lib/request.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
-import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
+import { accessTransaction, actorRef, audit, getAuthStore } from "../auth/store.ts";
 import { timelineSettings } from "./config.ts";
 import { isEventVisible, timeStatus, type EventRecord, type EventSyncLog } from "./models.ts";
 import { getEventStore } from "./store.ts";
@@ -72,7 +72,7 @@ export const eventsUpdate = defineHandler("events.update", async (request) => {
     }
     const state = (record: EventRecord) => ({ manualHidden: record.manualHidden, status: record.status, effectiveVisibility: isEventVisible(record), generation: record.generation });
     await audit(auth, transaction, hidden ? "event.hidden" : "event.unhidden", actor._id, id, {
-      actor: { id: actor._id, username: actor.username, role: actor.role }, changed, before: state(before), after: state(after),
+      actor: actorRef(actor), changed, before: state(before), after: state(after),
     });
     return adminEvent(after);
   });

@@ -1,5 +1,5 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { filterValue, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { filterValue, readPagination, rejectUnknownQuery, searchPattern } from "../../lib/pagination.ts";
 import { pathId } from "../../lib/request.ts";
 import { ARCHIVE_LIST_COLLATION, visibleQuery } from "../archives/public.ts";
 import { getArchiveStore } from "../archives/store.ts";
@@ -34,7 +34,6 @@ export function publicGroup(group: KnowledgeGroup, stats?: GroupStats) {
   };
 }
 
-const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const SORTS = ["order", "name", "newest"] as const;
 type View = ReturnType<typeof publicGroup>;
 const byName = (a: View, b: View) => a.name.localeCompare(b.name, "id", { sensitivity: "base" }) || a.id.localeCompare(b.id);
@@ -50,7 +49,7 @@ export const knowledgeList = defineHandler("knowledge.list", async (request) => 
   if (!(SORTS as readonly string[]).includes(sort)) throw new ApiError(400, "INVALID_FILTER", `sort must be one of: ${SORTS.join(", ")}.`);
   const { groups } = await getKnowledgeStore();
   const filter: Record<string, unknown> = { hidden: false };
-  if (q) filter.$or = ["name", "title", "description"].map(key => ({ [key]: { $regex: escapeRegex(q), $options: "i" } }));
+  if (q) filter.$or = ["name", "title", "description"].map(key => ({ [key]: searchPattern(q) }));
   const records = await groups.find(filter).toArray();
   const stats = await groupStats(records.map(group => group.ministryId));
   const order = new Map(records.map(group => [group._id, group.order]));

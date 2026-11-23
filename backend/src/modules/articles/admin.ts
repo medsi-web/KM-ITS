@@ -5,7 +5,7 @@ import { filterValue, findPage, readPagination, rejectUnknownQuery } from "../..
 import { pathId } from "../../lib/request.ts";
 import type { AdminAccount } from "../auth/models.ts";
 import { assertCurrentActor, requireAdmin, type AdminContext } from "../auth/session.ts";
-import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
+import { accessTransaction, actorRef, audit, getAuthStore } from "../auth/store.ts";
 import { articleSettings } from "./config.ts";
 import { hasUnpublishedChanges, type ArticleRecord, type ArticleSyncLog } from "./models.ts";
 import { getArticleStore } from "./store.ts";
@@ -92,7 +92,7 @@ async function mutate(request: Request, context: AdminContext, action: string, e
     const changed = after !== before;
     if (changed) await store.articles.replaceOne({ _id: id }, after, { session: transaction });
     const state = (record: ArticleRecord) => ({ ...flags(record), fingerprint: record.draft.fingerprint, publishedFingerprint: record.published?.fingerprint ?? null });
-    await audit(auth, transaction, action, actor._id, id, { actor: { id: actor._id, username: actor.username, role: actor.role }, changed, before: state(before), after: state(after) });
+    await audit(auth, transaction, action, actor._id, id, { actor: actorRef(actor), changed, before: state(before), after: state(after) });
     return adminArticle(after);
   });
 }

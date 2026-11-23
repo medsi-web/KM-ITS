@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { ClientSession } from "mongodb";
 import { ApiError, defineHandler, readJsonObject } from "../../lib/http.ts";
 import { readPagination } from "../../lib/pagination.ts";
+import { isDuplicateKey } from "../../lib/transaction.ts";
 import { pathId } from "../../lib/request.ts";
 import { archiveSources } from "../archives/sources.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
-import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
+import { accessTransaction, actorRef, audit, getAuthStore } from "../auth/store.ts";
 import { groupStats, publicGroup, type GroupStats } from "./public.ts";
 import { getKnowledgeStore, type KnowledgeGroup, type KnowledgeStore } from "./store.ts";
 import { parseCreate, parseUpdate, type GroupFields } from "./validation.ts";
@@ -42,7 +43,7 @@ async function write(operation: () => Promise<unknown>): Promise<void> {
   try {
     await operation();
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+    if (isDuplicateKey(error)) {
       throw new ApiError(409, "KNOWLEDGE_GROUP_EXISTS", "The slug or ministry is already used by another knowledge group.");
     }
     throw error;
@@ -82,7 +83,7 @@ export const knowledgeCreate = defineHandler("knowledge.create", async (request)
     const record: KnowledgeGroup = { _id: randomUUID(), ...fields, revision: 1, createdBy: actor._id, updatedBy: actor._id, createdAt: now, updatedAt: now };
     await write(() => store.groups.insertOne(record, { session }));
     await audit(auth, session, "knowledge.created", actor._id, record._id, {
-      actor: { id: actor._id, username: actor.username, role: actor.role }, after: auditState(record),
+      actor: actorRef(actor), after: auditState(record),
     });
     return record;
   });
@@ -107,7 +108,7 @@ export const knowledgeUpdate = defineHandler("knowledge.update", async (request)
     const after: KnowledgeGroup = { ...before, ...changes, revision: before.revision + 1, updatedBy: actor._id, updatedAt: new Date() };
     await write(() => store.groups.replaceOne({ _id: id }, after, { session }));
     await audit(auth, session, "knowledge.updated", actor._id, id, {
-      actor: { id: actor._id, username: actor.username, role: actor.role }, before: auditState(before), after: auditState(after),
+      actor: actorRef(actor), before: auditState(before), after: auditState(after),
     });
     return after;
   });
@@ -127,7 +128,7 @@ export const knowledgeDelete = defineHandler("knowledge.delete", async (request)
     if (!before) throw notFound();
     await store.groups.deleteOne({ _id: id }, { session });
     await audit(auth, session, "knowledge.deleted", actor._id, id, {
-      actor: { id: actor._id, username: actor.username, role: actor.role }, before: auditState(before),
+      actor: actorRef(actor), before: auditState(before),
     });
     return { id, deleted: true };
   });

@@ -2,7 +2,7 @@ import { ApiError, defineHandler } from "../../lib/http.ts";
 import { filterValue, findPage, readPagination } from "../../lib/pagination.ts";
 import { pathId } from "../../lib/request.ts";
 import { assertCurrentActor, requireAdmin } from "../auth/session.ts";
-import { accessTransaction, audit, getAuthStore } from "../auth/store.ts";
+import { accessTransaction, actorRef, audit, getAuthStore } from "../auth/store.ts";
 import { isArchiveVisible } from "./models.ts";
 import type { ArchiveRecord, ArchiveSyncLog } from "./models.ts";
 import { getArchiveStore } from "./store.ts";
@@ -65,7 +65,7 @@ function visibilityHandler(hidden: boolean) {
       const state = (record: ArchiveRecord) => ({ manualHidden: record.manualHidden, sourceState: record.sourceState,
         suppressionReason: record.suppressionReason, effectiveVisibility: isArchiveVisible(record), generation: record.generation });
       await audit(auth, transaction, hidden ? "archive.hidden" : "archive.unhidden", actor._id, id, {
-        actor: { id: actor._id, username: actor.username, role: actor.role }, changed,
+        actor: actorRef(actor), changed,
         before: state(before), after: state(after),
       });
       return adminArchive(after);

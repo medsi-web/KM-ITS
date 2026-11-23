@@ -1,5 +1,5 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { filterValue, findPage, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { filterValue, findPage, readPagination, rejectUnknownQuery, searchPattern } from "../../lib/pagination.ts";
 import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { driveReader, DriveSourceMissing } from "../../integrations/drive-reader.ts";
 import type { DriveReader } from "../../integrations/drive-reader.ts";
@@ -38,7 +38,6 @@ const SORTS = {
 } as const;
 
 function invalidFilter(message: string): never { throw new ApiError(400, "INVALID_FILTER", message); }
-const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Exact filters on ministry/category/year, a case-insensitive substring search
 // over title, description, category and authors, and a fixed set of sort orders.
@@ -57,7 +56,7 @@ export function archiveListQuery(url: URL) {
   }
   const q = filterValue(url, "q", 100)?.trim();
   if (q) {
-    const pattern = { $regex: escapeRegex(q), $options: "i" };
+    const pattern = searchPattern(q);
     filter.$or = ["title", "description", "category", "authors"].map(field => ({ [`snapshot.metadata.${field}`]: pattern }));
   }
   const sortName = url.searchParams.get("sort") ?? "newest";
