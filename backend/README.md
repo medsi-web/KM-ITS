@@ -265,6 +265,6 @@ isolated HTTP workflows (probes, Auth/Archive, Timeline, Articles) after a build
 
 Domain logic stays in `backend/src`; thin HTTP adapters stay in
 `frontend/src/app/api`. Only server code imports `@kmits/backend`. The MongoDB
-connection pool is reused per process. Remaining work includes the Apps Script
-connectors, UI integration, slugs and search, and operator verification against
-real Drive, Calendar and Form resources.
+connection pool is reused per process. Remaining work: deploying the Apps Script
+connectors, frontend integration of the admin pages, and operator verification
+against real Drive, Calendar and Form resources.
