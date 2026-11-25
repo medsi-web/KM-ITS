@@ -1,5 +1,5 @@
 import { ApiError, defineHandler } from "../../lib/http.ts";
-import { findPage, readPagination, rejectUnknownQuery } from "../../lib/pagination.ts";
+import { filterValue, findPage, readPagination, rejectUnknownQuery, searchPattern } from "../../lib/pagination.ts";
 import { pathId, UUID_PATTERN } from "../../lib/request.ts";
 import { driveReader, DriveSourceMissing } from "../../integrations/drive-reader.ts";
 import type { DriveReader } from "../../integrations/drive-reader.ts";
@@ -7,7 +7,10 @@ import { getArchiveStore } from "./store.ts";
 import { isArchiveVisible } from "./models.ts";
 import type { ArchiveRecord } from "./models.ts";
 
-const visibleQuery = { sourceState: "VALID" as const, manualHidden: false, snapshot: { $ne: null }, "snapshot.pdf.publicReadable": true };
+// Case-insensitive collation keeps title ordering natural and makes filters
+// case-insensitive; knowledge group counts use the same rules.
+export const ARCHIVE_LIST_COLLATION = { locale: "id", strength: 2 };
+export const visibleQuery = { sourceState: "VALID" as const, manualHidden: false, snapshot: { $ne: null }, "snapshot.pdf.publicReadable": true };
 
 function notFound() { return new ApiError(404, "ARCHIVE_NOT_FOUND", "The archive document was not found."); }
 
@@ -27,14 +30,46 @@ export function publicArchive(record: ArchiveRecord) {
   };
 }
 
+const LIST_QUERY = ["limit", "offset", "ministryId", "category", "year", "q", "sort"] as const;
+const SORTS = {
+  newest: { updatedAt: -1, _id: 1 },
+  oldest: { updatedAt: 1, _id: 1 },
+  title: { "snapshot.metadata.title": 1, _id: 1 },
+} as const;
+
+function invalidFilter(message: string): never { throw new ApiError(400, "INVALID_FILTER", message); }
+
+// Exact filters on ministry/category/year, a case-insensitive substring search
+// over title, description, category and authors, and a fixed set of sort orders.
+export function archiveListQuery(url: URL) {
+  rejectUnknownQuery(url, LIST_QUERY);
+  const filter: Record<string, unknown> = { ...visibleQuery };
+  const ministryId = filterValue(url, "ministryId", 200);
+  if (ministryId !== undefined) filter.ministryId = ministryId;
+  const category = filterValue(url, "category", 100);
+  // Equality is case-insensitive through the list collation.
+  if (category !== undefined) filter["snapshot.metadata.category"] = category.trim();
+  const year = url.searchParams.get("year");
+  if (year !== null) {
+    if (!/^\d{4}$/.test(year) || Number(year) < 1900) invalidFilter("year must be a four-digit year from 1900.");
+    filter["snapshot.metadata.year"] = Number(year);
+  }
+  const q = filterValue(url, "q", 100)?.trim();
+  if (q) {
+    const pattern = searchPattern(q);
+    filter.$or = ["title", "description", "category", "authors"].map(field => ({ [`snapshot.metadata.${field}`]: pattern }));
+  }
+  const sortName = url.searchParams.get("sort") ?? "newest";
+  if (!Object.hasOwn(SORTS, sortName)) invalidFilter(`sort must be one of: ${Object.keys(SORTS).join(", ")}.`);
+  return { filter, sort: SORTS[sortName as keyof typeof SORTS] };
+}
+
 export const archivesList = defineHandler("archives.list", async (request) => {
   const url = new URL(request.url);
   const page = readPagination(url, 20, 100);
-  // Search/grouping/filter contracts still need FE agreement. Reject unsupported
-  // parameters instead of silently implying that filtering was performed.
-  rejectUnknownQuery(url, ["limit", "offset"]);
+  const { filter, sort } = archiveListQuery(url);
   const { archives } = await getArchiveStore();
-  return findPage(archives, visibleQuery, { updatedAt: -1, _id: 1 }, page, publicArchive);
+  return findPage(archives, filter, sort, page, publicArchive, ARCHIVE_LIST_COLLATION);
 });
 
 export const archivesDetail = defineHandler("archives.detail", async (request) => {

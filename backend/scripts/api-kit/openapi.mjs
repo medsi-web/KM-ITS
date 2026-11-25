@@ -11,7 +11,7 @@ const page = schema => object({ items: { type: "array", items: schema }, total: 
 // ---- Schemas -------------------------------------------------------------
 
 const username = { type: "string", minLength: 3, maxLength: 64, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$" };
-const password = { type: "string", minLength: 12, maxLength: 128, writeOnly: true, description: "At most 512 UTF-8 bytes." };
+const password = { type: "string", minLength: 1, writeOnly: true, description: "No password policy; any non-empty string." };
 const role = { type: "string", enum: ["ADMIN", "SUPER_ADMIN"] };
 const meta = object({ requestId: { type: "string", format: "uuid" }, timestamp: { type: "string", format: "date-time" } });
 const decimal = { type: "string", pattern: "^(0|[1-9][0-9]{0,99})$" };
@@ -57,7 +57,14 @@ const schemas = {
   PublicEvent: object({ id: string, title: string, description: string, location: string, organization: string, allDay: { type: "boolean" }, startAt: instant, endAt: instant, status: { enum: ["UPCOMING", "ONGOING", "FINISHED"] }, updatedAt: instant }),
   PublicArticle: object({ id: string, title: string, summary: string, category: string, ministry: string, authors: { type: "array", items: string }, coverImage: { anyOf: [{ type: "null" }, object({ driveFileId: string, alt: string })] }, publishedAt: instant, updatedAt: instant, body: { type: "string", description: "Detail only." } }, ["id", "title", "summary", "category", "ministry", "authors", "coverImage", "publishedAt", "updatedAt"]),
   EventUpdate: object({ hidden: { type: "boolean" } }),
+
+  // Knowledge groups
+  KnowledgeGroup: object({ id: string, slug: string, ministryId: string, name: string, title: string, description: string, driveUrl: { type: "string", format: "uri" }, documentCount: { type: "integer", description: "Visible Archive documents of this ministry." }, lastDocumentAt: { type: ["string", "null"], format: "date-time" }, updatedAt: instant, documentsUrl: { type: "string", description: "Archive list filtered by this ministry." } }),
 };
+const groupFields = { slug: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", maxLength: 80, description: "Defaults to a slug of the name on create." }, ministryId: { type: "string", description: "A ministryId registered in archive.sources; one group per ministry." }, name: text(120, 1), title: text(200), description: text(2000, 1), driveUrl: { type: "string", format: "uri", maxLength: 500, description: "https://drive.google.com or https://docs.google.com only." }, order: { type: "integer", minimum: 0, maximum: 10000 }, hidden: { type: "boolean" } };
+schemas.AdminKnowledgeGroup = object({ ...schemas.KnowledgeGroup.properties, order: { type: "integer" }, hidden: { type: "boolean" }, revision: { type: "integer" }, createdBy: string, updatedBy: string, createdAt: instant });
+schemas.KnowledgeGroupCreate = object(groupFields, ["ministryId", "name", "description", "driveUrl"]);
+schemas.KnowledgeGroupUpdate = { ...object({ revision: { type: "integer", minimum: 1 }, ...groupFields }, ["revision"]), minProperties: 2, description: "revision plus the changed fields. 409 KNOWLEDGE_GROUP_CHANGED when revision is not current." };
 schemas.ArticleUpdate = { ...object({ revision: { type: "integer", minimum: 1 }, resetToSource: { const: true }, title: text(300, 1), summary: string, category: text(100), ministry: text(200), authors: { type: "array", maxItems: 30, items: text(200, 1) }, coverImage: schemas.ArticleContent.properties.coverImage, body: { type: "string", minLength: 1 } }, ["revision"]), minProperties: 2, description: "revision plus either resetToSource: true alone or one or more content fields. 409 ARTICLE_CHANGED when revision is not current." };
 schemas.ArticlePublish = object({ revision: { type: "integer", minimum: 1 } });
 
@@ -79,25 +86,37 @@ const RESPONSE_DATA = {
   "events.list": page(ref("PublicEvent")),
   "events.detail": ref("PublicEvent"),
   "articles.list": page(ref("PublicArticle")),
+  "knowledge.list": page(ref("KnowledgeGroup")),
+  "knowledge.detail": ref("KnowledgeGroup"),
+  "knowledge.adminList": object({ ...page(ref("AdminKnowledgeGroup")).properties, unassignedMinistries: { type: "array", items: string, description: "Registered ministries without a group." } }),
+  "knowledge.create": ref("AdminKnowledgeGroup"),
+  "knowledge.update": ref("AdminKnowledgeGroup"),
+  "knowledge.delete": object({ id: string, deleted: { const: true } }),
   "articles.detail": ref("PublicArticle"),
 };
 
 const REQUEST_SCHEMA = {
   "auth.login": "Login", "auth.password": "PasswordChange", "accounts.create": "AccountCreate", "accounts.update": "AccountUpdate",
   "sync.archives": "ArchiveObservation", "sync.events": "EventBatch", "sync.articles": "ArticleBatch",
-  "events.update": "EventUpdate", "articles.update": "ArticleUpdate", "articles.publish": "ArticlePublish",
+  "events.update": "EventUpdate", "knowledge.create": "KnowledgeGroupCreate", "knowledge.update": "KnowledgeGroupUpdate", "articles.update": "ArticleUpdate", "articles.publish": "ArticlePublish",
 };
 const REQUEST_EXAMPLE = { "sync.archives": observationExample, "sync.events": eventExample, "sync.articles": articleExample };
 
 const QUERY_PARAMETERS = {
-  "archives.list": ["limit", "offset"],
+  "archives.list": ["ministryId", "category", "year", "q", "sort", "limit", "offset"],
   "events.list": ["from", "to", "status", "limit", "offset"],
   "events.adminList": ["limit", "offset"],
   "articles.list": ["limit", "offset"],
+  "knowledge.list": ["q", "sort", "limit", "offset"],
+  "knowledge.adminList": ["limit", "offset"],
   "articles.adminList": ["published", "limit", "offset"],
   "sync.logs": ["source", "streamId", "externalSubmissionId", "eventId", "responseId", "limit", "offset"],
 };
-const QUERY_DESCRIPTIONS = { from: "Window start (ISO 8601).", to: "Window end (ISO 8601).", status: "UPCOMING, ONGOING or FINISHED, evaluated at request time.", limit: "Page size; bounds come from the feature's *_PAGE_* settings.", offset: "0-10000.", published: "true or false.", source: "archives (default), events or articles.", streamId: "Archive only.", externalSubmissionId: "Archive only.", eventId: "Events only.", responseId: "Articles only." };
+const QUERY_DESCRIPTIONS = { from: "Window start (ISO 8601).", to: "Window end (ISO 8601).", status: "UPCOMING, ONGOING or FINISHED, evaluated at request time.", limit: "Page size; bounds come from the feature's *_PAGE_* settings.", offset: "0-10000.", published: "true or false.", source: "archives (default), events or articles.", streamId: "Archive only.", externalSubmissionId: "Archive only.", eventId: "Events only.", responseId: "Articles only.", ministryId: "Exact ministry ID from the source registry.", category: "Exact category, case-insensitive.", year: "Four-digit document year.", q: "Case-insensitive search in title, description, category and authors (1-100 characters).", sort: "newest (default), oldest or title." };
+
+const QUERY_DESCRIPTION_OVERRIDES = {
+  "knowledge.list": { q: "Case-insensitive search in name, title and description (1-100 characters).", sort: "order (default, admin order then name), name or newest (latest visible document first).", limit: "Page size 1-100, default 50." },
+};
 
 // ---- Operations ------------------------------------------------------------
 
@@ -115,7 +134,7 @@ function responses(id, endpoint, { protectedRoute, integration, implemented }) {
     result[401] = failure(id === "auth.login" ? "Invalid username/password or login rate limit. Same generic error." : "Invalid integration bearer credential.");
   }
   if (implemented || integration) result[503] = failure("Required server configuration or transactional storage unavailable.");
-  if (endpoint.path.includes("{id}")) result[404] = failure("Record missing or not publicly visible.");
+  if (endpoint.path.includes("{")) result[404] = failure("Record missing or not publicly visible.");
   if (id === "archives.open") {
     delete result[200];
     result[302] = { description: "Verified public PDF; redirect to its Drive URL.", headers: { Location: { schema: { type: "string", format: "uri" } } } };
@@ -127,8 +146,8 @@ function responses(id, endpoint, { protectedRoute, integration, implemented }) {
 }
 
 function parameters(id, endpoint, protectedRoute) {
-  const list = endpoint.path.includes("{id}") ? [{ name: "id", in: "path", required: true, schema: { type: "string" } }] : [];
-  for (const name of QUERY_PARAMETERS[id] ?? []) list.push({ name, in: "query", required: false, schema: string, description: QUERY_DESCRIPTIONS[name] });
+  const list = [...endpoint.path.matchAll(/\{(\w+)\}/g)].map(([, name]) => ({ name, in: "path", required: true, schema: { type: "string" } }));
+  for (const name of QUERY_PARAMETERS[id] ?? []) list.push({ name, in: "query", required: false, schema: string, description: QUERY_DESCRIPTION_OVERRIDES[id]?.[name] ?? QUERY_DESCRIPTIONS[name] });
   if (endpoint.method !== "GET" && (protectedRoute || id === "auth.login")) list.push({ name: "Origin", in: "header", required: true, schema: string, description: "Exactly APP_ORIGIN." });
   if (endpoint.method !== "GET" && protectedRoute) list.push({ name: "X-CSRF-Token", in: "header", required: true, schema: string });
   return list;
@@ -166,14 +185,14 @@ export function buildOpenApi(endpoints) {
   }
   return {
     openapi: "3.1.0",
-    info: { title: "KM ITS API", version: "0.4.0", description: "Local password authentication, fixed 24-hour sessions, admin accounts, Archive ingestion/publication, Timeline event sync and visibility, and Article review/publication. Limits marked with environment names are configurable. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout." },
+    info: { title: "KM ITS API", version: "0.4.0", description: "Local password authentication, fixed 24-hour sessions, admin accounts, Archive ingestion/publication, Timeline event sync and visibility, and Article review/publication, and Knowledge groups. Limits marked with environment names are configurable. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout." },
     servers: [{ url: "http://localhost:3000" }],
     paths,
     components: {
       schemas,
       securitySchemes: {
         adminCookie: { type: "apiKey", in: "cookie", name: "kmits_session", description: "HTTPS uses __Host-kmits_session. Mutations require exact Origin and session CSRF token." },
-        integrationBearer: { type: "http", scheme: "bearer", description: "APPS_SCRIPT_INGESTION_SECRET; server-to-server only." },
+        integrationBearer: { type: "http", scheme: "bearer", description: "The Apps Script ingestion secret; the server stores only its SHA-256 (APPS_SCRIPT_INGESTION_SECRET_SHA256). Server-to-server only." },
       },
     },
   };

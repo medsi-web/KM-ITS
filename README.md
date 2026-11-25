@@ -3,12 +3,13 @@
 A pnpm workspace with one Next.js application in `frontend/` and a server-only
 `@kmits/backend` package. Both run in the same Next.js process.
 
-The API inventory contains **33 operations, all implemented**: system health,
+The API inventory contains **39 operations, all implemented**: system health,
 local username/password admin access, account management, Archive ingestion and
-publication, Timeline (Google Calendar) event sync and visibility, Article
-(Google Form) review and publication, and per-source sync logs. Frontend pages
-are maintained separately; this backend work changes only the HTTP adapters
-under the frontend package. Apps Script connectors are not part of this repository.
+publication, Knowledge groups, Timeline (Google Calendar) event sync and
+visibility, Article (Google Form) review and publication, and per-source sync
+logs. Frontend pages are maintained separately; this backend work changes only
+the HTTP adapters under the frontend package. The Apps Script connectors live in
+[backend/apps-script](backend/apps-script/README.md).
 
 ## Structure
 
@@ -41,13 +42,16 @@ pnpm install
 Copy-Item frontend/.env.example frontend/.env.local
 ```
 
-Configure a MongoDB replica set or Atlas, `APP_ORIGIN`, and private bootstrap
-credentials in `frontend/.env.local`. For local development, start MongoDB in
+Non-secret settings live in [`kmits.config.json`](kmits.config.json); secrets
+(MongoDB URI, password hash, ingestion secret hash, Drive keys) live in
+`frontend/.env.local`. Create the first super admin's password hash with
+`pnpm auth:hash`. For local development, start MongoDB in
 Docker with `pnpm db:up`; see [local database](backend/README.md#local-database-docker).
 For a fresh installation:
 
 ```powershell
 pnpm db:up
+pnpm auth:hash
 pnpm auth:setup
 pnpm auth:bootstrap
 pnpm archives:setup

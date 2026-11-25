@@ -58,7 +58,7 @@ Malformed JSON returns 400, schema/source violations 422, and unavailable config
 
 Every authenticated attempt has a separate `archive_sync_logs` record, including duplicates, invalid requests, stale deliveries, conflicts, and scan failures. Logs contain bounded identifiers and backend timestamps, never request bodies, arbitrary diagnostics, credentials, or raw parser output. An interrupted attempt may retain PROCESSING_NOT_COMMITTED; a retried delivery resolves safely through the ledger. No retention deletion is configured for the idempotency ledger.
 
-Before accepting traffic, an operator runs `pnpm archives:setup` (`scripts/setup-feature.mjs archives` in `backend/`). The command validates environment registrations and calls `initializeArchives(database)` to create indexes. Environment configuration remains authoritative; registrations are not duplicated into a database collection. MongoDB must support transactions (replica set or sharded cluster). No standalone fallback invents success. Provision actual source configuration, scanner credentials, source permissions, PDF public access, counter persistence, and operational monitoring before deployment. Apps Script/scanner code is outside this implementation.
+Before accepting traffic, an operator runs `pnpm archives:setup` (`scripts/setup-feature.mjs archives` in `backend/`). The command validates environment registrations and calls `initializeArchives(database)` to create indexes. Environment configuration remains authoritative; registrations are not duplicated into a database collection. MongoDB must support transactions (replica set or sharded cluster). No standalone fallback invents success. Provision actual source configuration, scanner credentials, source permissions, PDF public access, counter persistence, and operational monitoring before deployment. The scanner is the `syncArchive` Apps Script connector in `backend/apps-script` (see its README).
 
 Admin controls only set manual hiding/restoration and inspect current state/logs. Public opening separately revalidates current PDF binding and public accessibility through the backend Drive adapter. Source state remains the latest accepted observation, not a guarantee that Drive cannot change between polls.
 
@@ -90,6 +90,21 @@ authors:
 ```
 
 The frontmatter `driveFileId` identifies the PDF, not this Markdown file. Upload replacements with a new PDF Drive ID, then change this reference. The scanner supplies the Markdown file's identity/version, source folder, checksum, and public-readability evidence in the ingestion envelope. It sends only the defined metadata keys; body text and notes do not become publication metadata. Description, category, year, and authors may be omitted as described above.
+
+## Public list filters
+
+`GET /api/archives` returns only visible documents and accepts:
+
+| Parameter | Meaning |
+|---|---|
+| `ministryId` | Exact ministry ID from `ARCHIVE_SOURCE_CONFIG`. |
+| `category` | Exact category, case-insensitive. |
+| `year` | Four-digit document year (1900 or later). |
+| `q` | 1–100 characters. Case-insensitive substring search over title, description, category and authors. Regex characters are matched literally. |
+| `sort` | `newest` (default, last update first), `oldest`, or `title` (A–Z, case-insensitive). |
+| `limit`, `offset` | Pagination: limit 1–100 (default 20), offset 0–10000. |
+
+Filters combine with AND. Invalid values return `400 INVALID_FILTER` or `400 INVALID_PAGINATION`; unknown parameters return `400 UNSUPPORTED_QUERY`.
 
 ## Public opening and reader configuration
 

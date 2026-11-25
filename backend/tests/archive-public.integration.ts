@@ -55,6 +55,33 @@ test("public list/detail filter visibility and open verifies binding before no-s
   assert.equal(result.headers.get("location"), "https://drive.google.com/file/d/pdf-one/view");
   assert.equal((await open(request(hidden))).status, 404);
 });
+test("public list filters by ministry, category and year, searches text and sorts", async () => {
+  const snapshot = (title: string, extra: Partial<NonNullable<ArchiveRecord["snapshot"]>["metadata"]>) => ({
+    metadata: { schemaVersion: 1 as const, driveFileId: "pdf", title, description: "", category: "", year: null, authors: [], ...extra },
+    pdf: { driveFileId: "pdf", mimeType: "application/pdf" as const, sha256: "a".repeat(64), publicReadable: true }, fingerprint: title,
+  });
+  const day = (n: number) => new Date(Date.UTC(2026, 0, n));
+  const budget = await fixture({ ministryId: "finance", updatedAt: day(3), snapshot: snapshot("budget plan", { category: "Report", year: 2026, authors: ["Treasury Team"] }) });
+  const audit = await fixture({ ministryId: "finance", updatedAt: day(1), snapshot: snapshot("Audit", { category: "report", year: 2025, description: "Yearly budget review" }) });
+  const policy = await fixture({ ministryId: "policy", updatedAt: day(2), snapshot: snapshot("Campus policy", { category: "Study", year: 2026 }) });
+  await fixture({ ministryId: "finance", manualHidden: true, snapshot: snapshot("Hidden budget", { category: "Report" }) });
+  const ids = async (query: string) => {
+    const response = await archivesList(new Request(`http://localhost/api/archives${query}`));
+    assert.equal(response.status, 200, query);
+    return ((await response.json()) as { data: { items: { id: string }[] } }).data.items.map(item => item.id);
+  };
+  assert.deepEqual(await ids("?ministryId=finance"), [budget._id, audit._id]);
+  assert.deepEqual(await ids("?category=REPORT&sort=oldest"), [audit._id, budget._id]);
+  assert.deepEqual(await ids("?year=2026"), [budget._id, policy._id]);
+  assert.deepEqual(await ids("?q=BUDGET"), [budget._id, audit._id]);
+  assert.deepEqual(await ids("?q=treasury"), [budget._id]);
+  assert.deepEqual(await ids("?q=a.*"), []);
+  assert.deepEqual(await ids("?sort=title"), [audit._id, budget._id, policy._id]);
+  assert.deepEqual(await ids("?ministryId=finance&year=2025&q=review"), [audit._id]);
+  for (const query of ["?year=26", "?year=1800", "?sort=random", "?q=", `?q=${"x".repeat(101)}`, "?tag=x"]) {
+    assert.equal((await archivesList(new Request(`http://localhost/api/archives${query}`))).status, 400, query);
+  }
+});
 test("confirmed missing PDF suppresses entry; provider failure preserves publication", async () => {
   const record = await fixture();
   const unavailable = createArchiveOpen({ async inspectPdf() { throw new ApiError(503, "DRIVE_UNAVAILABLE", "Temporary failure"); } });

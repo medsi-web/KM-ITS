@@ -2,11 +2,14 @@ import { randomUUID } from "node:crypto";
 import { ApiError } from "../../lib/http.ts";
 import { accessTransaction, audit } from "./store.ts";
 import type { AuthStore } from "./store.ts";
-import { hashPassword, normalizedUsername } from "./password.ts";
+import { normalizedUsername, validPasswordHash } from "./password.ts";
 
-export async function bootstrapSuperAdmin(store: AuthStore, usernameInput: unknown, passwordInput: unknown) {
+export async function bootstrapSuperAdmin(store: AuthStore, usernameInput: unknown, passwordHashInput: unknown) {
   const username = normalizedUsername(usernameInput);
-  const passwordHash = await hashPassword(passwordInput);
+  if (!validPasswordHash(passwordHashInput)) {
+    throw new ApiError(400, "INVALID_PASSWORD_HASH", "Provide an Argon2id hash made by `pnpm auth:hash`, not a plaintext password.");
+  }
+  const passwordHash = passwordHashInput.trim();
   return accessTransaction(store, async (session) => {
     const control = await store.control.findOne({ _id: "access" }, { session });
     if (control?.bootstrapAccountId || await store.accounts.countDocuments({}, { session })) {

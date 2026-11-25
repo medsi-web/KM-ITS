@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { ApiError } from "../../lib/http.ts";
+import { setting } from "../../lib/config.ts";
 
 export const SESSION_SECONDS = 24 * 60 * 60;
 export const opaqueToken = () => randomBytes(32).toString("base64url");
@@ -8,7 +9,7 @@ export const csrfForSession = (token: string) => createHmac("sha256", token).upd
 export const sameSecret = (left: string, right: string) => timingSafeEqual(Buffer.from(tokenHash(left)), Buffer.from(tokenHash(right)));
 
 export function appOrigin(): string {
-  const configured = process.env.APP_ORIGIN;
+  const configured = setting("APP_ORIGIN");
   try {
     if (!configured) throw new Error();
     const url = new URL(configured);
@@ -22,7 +23,7 @@ export function appOrigin(): string {
 }
 
 export function cookieName(kind: "session" | "browser"): string {
-  return `${process.env.APP_ORIGIN?.trim().toLowerCase().startsWith("https:") ? "__Host-" : ""}kmits_${kind}`;
+  return `${setting("APP_ORIGIN")?.trim().toLowerCase().startsWith("https:") ? "__Host-" : ""}kmits_${kind}`;
 }
 
 export function readCookie(request: Request, name: string): string | undefined {

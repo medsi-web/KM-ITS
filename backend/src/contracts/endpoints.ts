@@ -1,5 +1,5 @@
 type Endpoint = {
-  method: "GET" | "POST" | "PATCH";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   group: string;
   access: "public" | "admin" | "super-admin" | "integration";
@@ -26,6 +26,12 @@ export const endpoints = {
   "archives.adminDetail": { method: "GET", path: "/api/admin/archives/{id}", group: "Archive", access: "admin", summary: "Inspect the latest snapshot and source state", implemented: true },
   "archives.publish": { method: "POST", path: "/api/admin/archives/{id}/publish", group: "Archive", access: "admin", summary: "Clear manual hiding; invalid sources remain hidden", implemented: true },
   "archives.unpublish": { method: "POST", path: "/api/admin/archives/{id}/unpublish", group: "Archive", access: "admin", summary: "Manually hide a document", implemented: true },
+  "knowledge.list": { method: "GET", path: "/api/knowledge-groups", group: "Knowledge", access: "public", summary: "List visible knowledge groups with document counts", implemented: true },
+  "knowledge.detail": { method: "GET", path: "/api/knowledge-groups/{slug}", group: "Knowledge", access: "public", summary: "Read a visible knowledge group by slug", implemented: true },
+  "knowledge.adminList": { method: "GET", path: "/api/admin/knowledge-groups", group: "Knowledge", access: "admin", summary: "List all knowledge groups and ministries without one", implemented: true },
+  "knowledge.create": { method: "POST", path: "/api/admin/knowledge-groups", group: "Knowledge", access: "admin", summary: "Create a knowledge group for a registered ministry", implemented: true },
+  "knowledge.update": { method: "PATCH", path: "/api/admin/knowledge-groups/{id}", group: "Knowledge", access: "admin", summary: "Edit a knowledge group at its current revision", implemented: true },
+  "knowledge.delete": { method: "DELETE", path: "/api/admin/knowledge-groups/{id}", group: "Knowledge", access: "admin", summary: "Delete a knowledge group; its documents stay in Archive", implemented: true },
   "articles.list": { method: "GET", path: "/api/articles", group: "Articles", access: "public", summary: "List published articles", implemented: true },
   "articles.detail": { method: "GET", path: "/api/articles/{id}", group: "Articles", access: "public", summary: "Read a published article", implemented: true },
   "articles.adminList": { method: "GET", path: "/api/admin/articles", group: "Articles", access: "admin", summary: "List submitted articles and the review queue", implemented: true },

@@ -7,6 +7,7 @@ import { isEventVisible } from "../src/modules/events/models.ts";
 import { eventCollections, initializeEvents } from "../src/modules/events/store.ts";
 import { syncEvents } from "../src/modules/sync/handlers.ts";
 import { batch, calendarEvent, CALENDAR } from "./fixtures/events.ts";
+import { ingestionSecretHash } from "../src/integrations/apps-script.ts";
 
 let replica: MongoMemoryReplSet;
 const secret = "events-integration-secret-not-for-deployment";
@@ -14,7 +15,7 @@ before(async () => {
   replica = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   process.env.MONGODB_URI = replica.getUri();
   process.env.MONGODB_DATABASE = "events_sync_test";
-  process.env.APPS_SCRIPT_INGESTION_SECRET = secret;
+  process.env.APPS_SCRIPT_INGESTION_SECRET_SHA256 = ingestionSecretHash(secret);
   process.env.EVENT_CALENDAR_ID = CALENDAR;
 });
 after(async () => { await (await getMongoClient()).close(); await replica?.stop(); });

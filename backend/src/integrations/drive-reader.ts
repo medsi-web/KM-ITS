@@ -1,5 +1,6 @@
 import { createHash, createSign } from "node:crypto";
 import { ApiError } from "../lib/http.ts";
+import { setting } from "../lib/config.ts";
 
 const DRIVE_API = "https://www.googleapis.com/drive/v3/files/";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -36,7 +37,7 @@ export function createDriveReader(fetcher: typeof fetch = fetch): DriveReader {
   let inFlight: Promise<string> | undefined;
 
   function config() {
-    const email = process.env.DRIVE_SERVICE_ACCOUNT_EMAIL?.trim();
+    const email = setting("DRIVE_SERVICE_ACCOUNT_EMAIL")?.trim();
     const privateKey = process.env.DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
     const publicApiKey = process.env.DRIVE_PUBLIC_API_KEY?.trim();
     if (!email || !privateKey || !publicApiKey) {

@@ -67,6 +67,9 @@ export async function accessTransaction<T>(store: AuthStore, action: (session: C
   }
 }
 
+/** The actor fields every admin audit record carries. */
+export const actorRef = (actor: { _id: string; username?: string | null; role: string }) => ({ id: actor._id, username: actor.username, role: actor.role });
+
 export async function audit(store: AuthStore, session: ClientSession, action: string, actorId: string, targetId: string, changes?: Record<string, unknown>) {
   await store.audit.insertOne({ _id: randomUUID(), action, actorId, targetId, at: new Date(), ...(changes ? { changes } : {}) }, { session });
 }

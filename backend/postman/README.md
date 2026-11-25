@@ -10,6 +10,6 @@ For an automated disposable run, build the application first, then run `pnpm --f
 
 The anonymous probe collection expects an initialized archive database. Set `readyExpectedStatus` to 200 for a ready local server or 503 when unavailable. Set `integrationProbeStatus` to 401 with the server integration secret configured, or 503 when absent. `loginExpectedStatus` defaults to 401 for deliberately invalid credentials. Use the full runner for repeatable configuration.
 
-Generate committed artifacts with `pnpm --filter @kmits/backend api:generate`. `backend/openapi.json` describes all 33 implemented operations, including batch schemas, query parameters and configurable limits. Successful Archive opening is a verified 302 redirect; missing reader configuration is 503. No login OAuth flow or approval/rejection state is part of this API.
+Generate committed artifacts with `pnpm --filter @kmits/backend api:generate`. `backend/openapi.json` describes all 39 implemented operations, including batch schemas, query parameters and configurable limits. Successful Archive opening is a verified 302 redirect; missing reader configuration is 503. No login OAuth flow or approval/rejection state is part of this API.
 
-Generation does not run tests or contact a database. Last verified on 2026-11-16 on branch `dev_be`: `pnpm api:check` and `pnpm test:http` (33 anonymous probes, 33 login/account/Archive, 20 Timeline and 23 Articles workflow requests) passed.
+Generation does not run tests or contact a database. Last verified on 2026-11-23 on branch `dev_be`: `pnpm api:check` and `pnpm test:http` (39 anonymous probes, 51 login/account/Archive/Knowledge, 20 Timeline and 23 Articles workflow requests) passed.

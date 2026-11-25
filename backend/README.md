@@ -6,19 +6,21 @@ untouched; the API implementation adds no admin, Archive, Timeline or Article UI
 
 ## Implemented scope
 
-The inventory contains **33 HTTP operations, all implemented**.
+The inventory contains **39 HTTP operations, all implemented**.
 
 - System liveness and MongoDB readiness.
 - Local username/password login, session inspection, logout and password change.
 - Super-admin account listing, creation, changes and temporary password reset.
 - Archive ingestion, admin list/detail, manual hide/unhide, public reads and verified PDF open redirects.
+- Knowledge groups: one admin-managed group per ministry (name, description, Drive
+  link, order, hidden) with public list/detail and admin CRUD. See [docs/knowledge.md](../docs/knowledge.md).
 - Timeline: Google Calendar event batch sync, public list/detail with window and
   status filters, admin list/detail and manual hiding.
 - Articles: Google Form submission batch sync, admin review queue, draft editing,
   revision-checked publish and unpublish, public list/detail.
 - Sync logs for archives, events and articles through one admin endpoint.
 
-No Apps Script connector is implemented. Readiness checks database connectivity;
+The Apps Script connectors are in [apps-script/](apps-script/README.md). Readiness checks database connectivity;
 it does not certify indexes, registered sources or Google permissions.
 
 ## Local setup
@@ -32,24 +34,27 @@ pnpm install
 Copy-Item frontend/.env.example frontend/.env.local
 ```
 
-Set `MONGODB_URI`, `MONGODB_DATABASE`, and the exact `APP_ORIGIN`. For a fresh
-installation, privately set `BOOTSTRAP_SUPER_ADMIN_USERNAME` and
-`BOOTSTRAP_SUPER_ADMIN_PASSWORD`, then run:
+Set `MONGODB_URI` in `frontend/.env.local`, and check `app.origin` and
+`database.name` in [`kmits.config.json`](../kmits.config.json) (see
+[Configuration](#configuration)). For a fresh installation, set
+`auth.bootstrapSuperAdminUsername`, then hash your password and put only the hash
+in the environment:
 
 ```powershell
+pnpm auth:hash        # type the password twice; prints BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH='...'
 pnpm auth:setup
-pnpm auth:bootstrap
+pnpm auth:bootstrap   # reads the hash; remove it from the env file afterwards
 pnpm archives:setup
 pnpm timeline:setup
 pnpm articles:setup
 pnpm dev
 ```
 
-`pnpm timeline:setup` needs `EVENT_CALENDAR_ID` and `pnpm articles:setup` needs
-`ARTICLE_FORM_ID`; both exit with a `*_NOT_CONFIGURED` code until set. Until a
+`pnpm timeline:setup` needs `timeline.calendarId` and `pnpm articles:setup` needs
+`articles.formId`; both exit with a `*_NOT_CONFIGURED` code until set. Until a
 feature's setup has run, its routes return `503 *_NOT_INITIALIZED`.
 `pnpm archives:setup` exits with `ARCHIVE_SOURCES_NOT_CONFIGURED` until
-`ARCHIVE_SOURCE_CONFIG` lists at least one registered folder. This is intended:
+`archive.sources` lists at least one registered folder. This is intended:
 Archive ingestion fails closed without source registrations.
 
 Remove bootstrap credentials after provisioning. There is no default account or
@@ -123,8 +128,9 @@ Run `pnpm archives:setup` to create Archive indexes and validate configuration.
 Archive requests fail closed with `503` until setup records the schema as ready
 after creating the required uniqueness and ordering indexes.
 Keep stream identities and scan-sequence namespaces stable across connector
-restarts. Configure a random `APPS_SCRIPT_INGESTION_SECRET` of at least 32
-characters; internal ingestion uses `Authorization: Bearer <secret>`.
+restarts. Run `pnpm integration:secret`: it prints a random secret for the Apps
+Script project and its SHA-256 for `APPS_SCRIPT_INGESTION_SECRET_SHA256`. The
+server stores only the hash. Internal ingestion uses `Authorization: Bearer <secret>`.
 
 Archive ingestion validates the source registration, delivery identity, sequence,
 metadata and PDF observations. It tracks duplicates, stale deliveries, source
@@ -141,8 +147,11 @@ Records are retained rather than hard deleted. Source loss or invalidity suppres
 public visibility until a valid observation restores it.
 
 Public list/detail return sanitized metadata and an application open URL only for
-currently visible records. List pagination supports `limit` and `offset`; search
-and grouping are not implemented. Opening a document verifies its current PDF
+currently visible records. The list accepts `ministryId`, `category` and `year`
+filters, a case-insensitive `q` search over title, description, category and
+authors, `sort=newest|oldest|title`, and `limit`/`offset`. Grouping by ministry
+uses `ministryId`; `GET /api/knowledge-groups` returns each ministry's group with its
+document count. Opening a document verifies its current PDF
 through Drive, then redirects to the Drive viewer. Hidden or unavailable records
 return `404`; temporary verification failures may return `503`.
 
@@ -168,29 +177,46 @@ published content is exactly what the admin reviewed.
 
 ## Configuration
 
-All settings live in `frontend/.env.local`; `frontend/.env.example` lists them
-with comments. Restart the server after changing any value. Optional numeric
-settings use the default when empty; an invalid value makes the affected routes
-return `503 CONFIGURATION_INVALID` naming the setting, never a silent fallback.
+Settings come from two places:
 
-| Setting | Default | Range | Purpose |
-|---|---|---|---|
-| `MONGODB_URI`, `MONGODB_DATABASE` | required | | Transaction-capable MongoDB |
-| `APP_ORIGIN` | required | | Exact browser origin for login and admin mutations |
-| `APPS_SCRIPT_INGESTION_SECRET` | empty (ingestion off) | 32+ characters | Bearer secret for every `/api/internal/sync/*` route |
-| `API_MAX_JSON_BYTES` | 262144 | 1024–16777216 | Largest JSON request body |
-| `ARCHIVE_SOURCE_CONFIG` | `[]` (Archive off) | JSON array | Registered Archive folders |
-| `DRIVE_SERVICE_ACCOUNT_EMAIL`, `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY`, `DRIVE_PUBLIC_API_KEY` | empty | | Archive PDF verification |
-| `EVENT_CALENDAR_ID` | required for Timeline | | Shared Google Calendar ID |
-| `EVENT_SYNC_MAX_ITEMS` | 50 | 1–500 | Events per sync request |
-| `EVENT_DESCRIPTION_MAX_CHARS` | 8000 | 1–100000 | Event description length |
-| `EVENT_PAGE_DEFAULT_LIMIT`, `EVENT_PAGE_MAX_LIMIT` | 50, 200 | 1–1000 | Event list page size |
-| `ARTICLE_FORM_ID` | required for Articles | | Google Form ID |
-| `ARTICLE_SYNC_MAX_ITEMS` | 20 | 1–500 | Submissions per sync request |
-| `ARTICLE_SUMMARY_MAX_CHARS` | 1000 | 1–100000 | Article summary length |
-| `ARTICLE_BODY_MAX_CHARS` | 50000 | 1–1000000 | Markdown body length |
-| `ARTICLE_PAGE_DEFAULT_LIMIT`, `ARTICLE_PAGE_MAX_LIMIT` | 20, 100 | 1–1000 | Article list page size |
-| `BOOTSTRAP_SUPER_ADMIN_USERNAME`, `BOOTSTRAP_SUPER_ADMIN_PASSWORD` | empty | | First super admin only; remove after bootstrap |
+- **`kmits.config.json`** at the repository root holds every non-secret setting.
+  It is committed. Another file can be selected with `KMITS_CONFIG_PATH`, for
+  example `KMITS_CONFIG_PATH=../kmits.config.staging.json` on a staging host.
+- **Environment** (`frontend/.env.local` locally, the host's secret store on a
+  server) holds secrets only. `frontend/.env.example` lists them.
+
+A non-empty environment variable overrides the same setting in the file, so one
+host can differ (for example `APP_ORIGIN`) without editing the file. Empty strings
+and `null` in the file mean "unset". The file accepts only the keys below; any
+other key, such as a pasted password, makes the affected routes and scripts fail
+with `503 CONFIGURATION_INVALID`. Restart the server after changing either source.
+
+| Config file key | Variable | Default | Range | Purpose |
+|---|---|---|---|---|
+| `app.origin` | `APP_ORIGIN` | required | | Exact browser origin for login and admin mutations |
+| `app.maxJsonBytes` | `API_MAX_JSON_BYTES` | 262144 | 1024–16777216 | Largest JSON request body |
+| `database.name` | `MONGODB_DATABASE` | required | | MongoDB database name |
+| `auth.bootstrapSuperAdminUsername` | `BOOTSTRAP_SUPER_ADMIN_USERNAME` | empty | 3–64 characters | First super admin only |
+| `archive.sources` | `ARCHIVE_SOURCE_CONFIG` | `[]` (Archive off) | array | Registered Archive folders `{streamId, ministryId, folderId}` |
+| `archive.driveServiceAccountEmail` | `DRIVE_SERVICE_ACCOUNT_EMAIL` | empty | | Archive PDF reader identity |
+| `timeline.calendarId` | `EVENT_CALENDAR_ID` | required for Timeline | | Shared Google Calendar ID |
+| `timeline.syncMaxItems` | `EVENT_SYNC_MAX_ITEMS` | 50 | 1–500 | Events per sync request |
+| `timeline.descriptionMaxChars` | `EVENT_DESCRIPTION_MAX_CHARS` | 8000 | 1–100000 | Event description length |
+| `timeline.pageDefaultLimit`, `timeline.pageMaxLimit` | `EVENT_PAGE_DEFAULT_LIMIT`, `EVENT_PAGE_MAX_LIMIT` | 50, 200 | 1–1000 | Event list page size |
+| `articles.formId` | `ARTICLE_FORM_ID` | required for Articles | | Google Form ID |
+| `articles.syncMaxItems` | `ARTICLE_SYNC_MAX_ITEMS` | 20 | 1–500 | Submissions per sync request |
+| `articles.summaryMaxChars` | `ARTICLE_SUMMARY_MAX_CHARS` | 1000 | 1–100000 | Article summary length |
+| `articles.bodyMaxChars` | `ARTICLE_BODY_MAX_CHARS` | 50000 | 1–1000000 | Markdown body length |
+| `articles.pageDefaultLimit`, `articles.pageMaxLimit` | `ARTICLE_PAGE_DEFAULT_LIMIT`, `ARTICLE_PAGE_MAX_LIMIT` | 20, 100 | 1–1000 | Article list page size |
+
+Secrets, environment only:
+
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI` | Transaction-capable MongoDB; may contain a password |
+| `APPS_SCRIPT_INGESTION_SECRET_SHA256` | SHA-256 (hex) of the bearer secret for every `/api/internal/sync/*` route, from `pnpm integration:secret`. The plaintext secret lives only in the Apps Script project. Empty turns ingestion off. |
+| `BOOTSTRAP_SUPER_ADMIN_PASSWORD_HASH` | Argon2id hash from `pnpm auth:hash` for the first super admin only; remove after bootstrap. The plaintext password is never stored. |
+| `DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY`, `DRIVE_PUBLIC_API_KEY` | Archive PDF verification |
 
 Raise `API_MAX_JSON_BYTES` together with `ARTICLE_BODY_MAX_CHARS` or the batch
 sizes, otherwise large batches are rejected with 413. Changing a calendar or form
@@ -239,6 +265,6 @@ isolated HTTP workflows (probes, Auth/Archive, Timeline, Articles) after a build
 
 Domain logic stays in `backend/src`; thin HTTP adapters stay in
 `frontend/src/app/api`. Only server code imports `@kmits/backend`. The MongoDB
-connection pool is reused per process. Remaining work includes the Apps Script
-connectors, UI integration, slugs and search, and operator verification against
-real Drive, Calendar and Form resources.
+connection pool is reused per process. Remaining work: deploying the Apps Script
+connectors, frontend integration of the admin pages, and operator verification
+against real Drive, Calendar and Form resources.

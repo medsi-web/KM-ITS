@@ -38,14 +38,14 @@ function probeStatus(id, endpoint) {
   if (endpoint.access === "integration") return 'Number(pm.environment.get("integrationProbeStatus") || "401")';
   if (id === "auth.login") return 'Number(pm.environment.get("loginExpectedStatus") || "401")';
   if (id === "system.ready") return 'Number(pm.environment.get("readyExpectedStatus") || "503")';
-  return ["system.health", "archives.list", "events.list", "articles.list"].includes(id) ? 200 : 404;
+  return ["system.health", "archives.list", "events.list", "articles.list", "knowledge.list"].includes(id) ? 200 : 404;
 }
 
 export function probeCollection(endpoints) {
   const probes = Object.entries(endpoints).map(([id, endpoint]) => {
     const protectedRoute = ["admin", "super-admin"].includes(endpoint.access);
     const body = id === "auth.login" ? { username: "nonexistent-probe", password: "incorrect probe password" } : endpoint.method !== "GET" ? {} : undefined;
-    return item(`${endpoint.method} ${endpoint.path}`, endpoint.method, endpoint.path.replace("{id}", "{{recordId}}"), body,
+    return item(`${endpoint.method} ${endpoint.path}`, endpoint.method, endpoint.path.replace(/\{\w+\}/g, "{{recordId}}"), body,
       probeStatus(id, endpoint), protectedRoute ? [assertCode("UNAUTHENTICATED")] : [], { session: false, csrf: false });
   });
   return {

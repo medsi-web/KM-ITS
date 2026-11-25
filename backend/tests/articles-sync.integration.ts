@@ -6,6 +6,7 @@ import { ingestArticles } from "../src/modules/articles/ingestion.ts";
 import { articleCollections, initializeArticles } from "../src/modules/articles/store.ts";
 import { syncArticles } from "../src/modules/sync/handlers.ts";
 import { articleBatch, FORM, submission } from "./fixtures/articles.ts";
+import { ingestionSecretHash } from "../src/integrations/apps-script.ts";
 
 let replica: MongoMemoryReplSet;
 const secret = "articles-integration-secret-not-for-deployment";
@@ -13,7 +14,7 @@ before(async () => {
   replica = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   process.env.MONGODB_URI = replica.getUri();
   process.env.MONGODB_DATABASE = "articles_sync_test";
-  process.env.APPS_SCRIPT_INGESTION_SECRET = secret;
+  process.env.APPS_SCRIPT_INGESTION_SECRET_SHA256 = ingestionSecretHash(secret);
   process.env.ARTICLE_FORM_ID = FORM;
 });
 after(async () => { await (await getMongoClient()).close(); await replica?.stop(); });

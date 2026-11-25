@@ -3,7 +3,7 @@
   "info": {
     "title": "KM ITS API",
     "version": "0.4.0",
-    "description": "Local password authentication, fixed 24-hour sessions, admin accounts, Archive ingestion/publication, Timeline event sync and visibility, and Article review/publication. Limits marked with environment names are configurable. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout."
+    "description": "Local password authentication, fixed 24-hour sessions, admin accounts, Archive ingestion/publication, Timeline event sync and visibility, and Article review/publication, and Knowledge groups. Limits marked with environment names are configurable. Login returns generic 401 for invalid credentials and rate limits. Temporary passwords permit only me/password/logout."
   },
   "servers": [
     {
@@ -1385,6 +1385,51 @@
         },
         "parameters": [
           {
+            "name": "ministryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact ministry ID from the source registry."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact category, case-insensitive."
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Four-digit document year."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Case-insensitive search in title, description, category and authors (1-100 characters)."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "newest (default), oldest or title."
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -1935,6 +1980,868 @@
                     },
                     "data": {
                       "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exactly APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/knowledge-groups": {
+      "get": {
+        "operationId": "knowledge.list",
+        "summary": "List visible knowledge groups with document counts",
+        "tags": [
+          "Knowledge"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "List visible knowledge groups with document counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/KnowledgeGroup"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total",
+                        "limit",
+                        "offset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Case-insensitive search in name, title and description (1-100 characters)."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "order (default, admin order then name), name or newest (latest visible document first)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size 1-100, default 50."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
+      }
+    },
+    "/api/knowledge-groups/{slug}": {
+      "get": {
+        "operationId": "knowledge.detail",
+        "summary": "Read a visible knowledge group by slug",
+        "tags": [
+          "Knowledge"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Read a visible knowledge group by slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/KnowledgeGroup"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/knowledge-groups": {
+      "get": {
+        "operationId": "knowledge.adminList",
+        "summary": "List all knowledge groups and ministries without one",
+        "tags": [
+          "Knowledge"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List all knowledge groups and ministries without one",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminKnowledgeGroup"
+                          }
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        },
+                        "unassignedMinistries": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Registered ministries without a group."
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total",
+                        "limit",
+                        "offset",
+                        "unassignedMinistries"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Page size; bounds come from the feature's *_PAGE_* settings."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "0-10000."
+          }
+        ]
+      },
+      "post": {
+        "operationId": "knowledge.create",
+        "summary": "Create a knowledge group for a registered ministry",
+        "tags": [
+          "Knowledge"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Create a knowledge group for a registered ministry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminKnowledgeGroup"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exactly APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeGroupCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/knowledge-groups/{id}": {
+      "patch": {
+        "operationId": "knowledge.update",
+        "summary": "Edit a knowledge group at its current revision",
+        "tags": [
+          "Knowledge"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Edit a knowledge group at its current revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminKnowledgeGroup"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, temporary-password restriction or CSRF rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record missing or not publicly visible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Invalid input, conflict, oversized body or unsupported media type.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required server configuration or transactional storage unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exactly APP_ORIGIN."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeGroupUpdate"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "knowledge.delete",
+        "summary": "Delete a knowledge group; its documents stay in Archive",
+        "tags": [
+          "Knowledge"
+        ],
+        "x-implementation-status": "implemented",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete a knowledge group; its documents stay in Archive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "deleted": {
+                          "const": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "deleted"
+                      ],
+                      "additionalProperties": false
                     },
                     "meta": {
                       "type": "object",
@@ -4427,10 +5334,9 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128,
+            "minLength": 1,
             "writeOnly": true,
-            "description": "At most 512 UTF-8 bytes."
+            "description": "No password policy; any non-empty string."
           }
         },
         "required": [
@@ -4444,17 +5350,15 @@
         "properties": {
           "oldPassword": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128,
+            "minLength": 1,
             "writeOnly": true,
-            "description": "At most 512 UTF-8 bytes."
+            "description": "No password policy; any non-empty string."
           },
           "newPassword": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128,
+            "minLength": 1,
             "writeOnly": true,
-            "description": "At most 512 UTF-8 bytes."
+            "description": "No password policy; any non-empty string."
           }
         },
         "required": [
@@ -5230,6 +6134,259 @@
         ],
         "additionalProperties": false
       },
+      "KnowledgeGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "ministryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "driveUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "documentCount": {
+            "type": "integer",
+            "description": "Visible Archive documents of this ministry."
+          },
+          "lastDocumentAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "documentsUrl": {
+            "type": "string",
+            "description": "Archive list filtered by this ministry."
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "ministryId",
+          "name",
+          "title",
+          "description",
+          "driveUrl",
+          "documentCount",
+          "lastDocumentAt",
+          "updatedAt",
+          "documentsUrl"
+        ],
+        "additionalProperties": false
+      },
+      "AdminKnowledgeGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "ministryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "driveUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "documentCount": {
+            "type": "integer",
+            "description": "Visible Archive documents of this ministry."
+          },
+          "lastDocumentAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          },
+          "documentsUrl": {
+            "type": "string",
+            "description": "Archive list filtered by this ministry."
+          },
+          "order": {
+            "type": "integer"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 with Z or an offset."
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "ministryId",
+          "name",
+          "title",
+          "description",
+          "driveUrl",
+          "documentCount",
+          "lastDocumentAt",
+          "updatedAt",
+          "documentsUrl",
+          "order",
+          "hidden",
+          "revision",
+          "createdBy",
+          "updatedBy",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "KnowledgeGroupCreate": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 80,
+            "description": "Defaults to a slug of the name on create."
+          },
+          "ministryId": {
+            "type": "string",
+            "description": "A ministryId registered in archive.sources; one group per ministry."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "title": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "driveUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500,
+            "description": "https://drive.google.com or https://docs.google.com only."
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "hidden": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ministryId",
+          "name",
+          "description",
+          "driveUrl"
+        ],
+        "additionalProperties": false
+      },
+      "KnowledgeGroupUpdate": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 80,
+            "description": "Defaults to a slug of the name on create."
+          },
+          "ministryId": {
+            "type": "string",
+            "description": "A ministryId registered in archive.sources; one group per ministry."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "title": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "driveUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500,
+            "description": "https://drive.google.com or https://docs.google.com only."
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "hidden": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false,
+        "minProperties": 2,
+        "description": "revision plus the changed fields. 409 KNOWLEDGE_GROUP_CHANGED when revision is not current."
+      },
       "ArticleUpdate": {
         "type": "object",
         "properties": {
@@ -5328,7 +6485,7 @@
       "integrationBearer": {
         "type": "http",
         "scheme": "bearer",
-        "description": "APPS_SCRIPT_INGESTION_SECRET; server-to-server only."
+        "description": "The Apps Script ingestion secret; the server stores only its SHA-256 (APPS_SCRIPT_INGESTION_SECRET_SHA256). Server-to-server only."
       }
     }
   }
