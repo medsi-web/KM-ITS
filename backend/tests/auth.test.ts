@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
-import { LoginTicket, OAuth2Client } from "google-auth-library";
 import { ApiError } from "../src/lib/http.ts";
-import { exchangeGoogleCode, googleAuthorizationUrl } from "../src/integrations/google-login.ts";
-import { normalizedEmail } from "../src/modules/auth/identity.ts";
+import { hashPassword, normalizedUsername, verifyPassword, validPassword, validPasswordHash } from "../src/modules/auth/password.ts";
 import { appOrigin, authCookie, cookieName, csrfForSession, opaqueToken, readCookie, requireCsrf, SESSION_SECONDS, tokenHash } from "../src/modules/auth/security.ts";
 
 const originalEnvironment = { ...process.env };
@@ -46,48 +44,34 @@ test("ambiguous or malformed session cookies are not accepted", () => {
   assert.notEqual(tokenHash(token), token);
 });
 
-test("Google authorization requests use only login scopes and bind state, nonce, PKCE, and configured callback", () => {
-  process.env.APP_ORIGIN = "http://localhost:3000";
-  process.env.GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com";
-  process.env.GOOGLE_CLIENT_SECRET = "test-client-secret";
-  const state = opaqueToken();
-  const verifier = opaqueToken();
-  const nonce = opaqueToken();
-  const url = new URL(googleAuthorizationUrl(state, verifier, nonce));
-  assert.equal(url.origin, "https://accounts.google.com");
-  assert.equal(url.searchParams.get("state"), state);
-  assert.equal(url.searchParams.get("nonce"), nonce);
-  assert.equal(url.searchParams.get("code_challenge_method"), "S256");
-  assert.equal(url.searchParams.get("code_challenge"), Buffer.from(tokenHash(verifier), "hex").toString("base64url"));
-  assert.equal(url.searchParams.get("redirect_uri"), "http://localhost:3000/api/auth/callback/google");
-  assert.equal(url.searchParams.get("scope"), "openid email profile");
-  assert.equal(url.searchParams.get("access_type"), "online");
-  assert.ok(!url.toString().includes("test-client-secret"));
+test("usernames normalize case and reject ambiguous or invalid identifiers", () => {
+  assert.equal(normalizedUsername(" Owner.Name "), "owner.name");
+  for (const value of ["ab", "a b", "@owner", "?clair", "a".repeat(65), null]) assert.throws(() => normalizedUsername(value), ApiError);
+});
+test("Argon2id hashes have the configured cost, independent salts and bounded inputs", async () => {
+  const password = "a strong password 123";
+  const first = await hashPassword(password);
+  const second = await hashPassword(password);
+  assert.match(first, /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/);
+  assert.notEqual(first, second);
+  assert.equal(await verifyPassword(first, password), true);
+  assert.equal(await verifyPassword(first, "wrong-password"), false);
+  assert.equal(await verifyPassword(undefined, password), false);
+  // No password policy: short and long passwords are accepted; only empty is not.
+  assert.equal(validPassword("a"), true);
+  assert.equal(validPassword("a".repeat(1000)), true);
+  assert.equal(await verifyPassword(await hashPassword("x"), "x"), true);
+  assert.equal(validPassword(""), false);
+  await assert.rejects(hashPassword(""), ApiError);
 });
 
-test("invitation email normalization does not merge plus-tags or dotted addresses", () => {
-  assert.equal(normalizedEmail(" Owner.Name+admin@GMAIL.com "), "owner.name+admin@gmail.com");
-  assert.throws(() => normalizedEmail("not-an-email"), ApiError);
-});
-
-test("Google code exchange delegates verification to Google's library and rejects wrong nonce/expired/unverified identities", async () => {
-  process.env.APP_ORIGIN = "http://localhost:3000";
-  process.env.GOOGLE_CLIENT_ID = "test-client";
-  process.env.GOOGLE_CLIENT_SECRET = "test-secret";
-  const now = Math.floor(Date.now() / 1000);
-  const payload = { iss: "https://accounts.google.com", aud: "test-client", sub: "google-sub", email: "owner@gmail.com", email_verified: true, iat: now, exp: now + 600, nonce: "expected-nonce" };
-  const exchange = mock.method(OAuth2Client.prototype, "getToken", async () => ({ tokens: { id_token: "test-token" }, res: null }));
-  const verify = mock.method(OAuth2Client.prototype, "verifyIdToken", async () => new LoginTicket(undefined, payload));
-  const identity = await exchangeGoogleCode("code", "verifier", "expected-nonce");
-  assert.equal(identity.sub, "google-sub");
-  assert.deepEqual(exchange.mock.calls[0].arguments[0], { code: "code", codeVerifier: "verifier" });
-  assert.deepEqual(verify.mock.calls[0].arguments[0], { idToken: "test-token", audience: "test-client" });
-  for (const change of [{ nonce: "wrong" }, { exp: now - 1 }, { email_verified: false }]) {
-    const previous = { ...payload };
-    Object.assign(payload, change);
-    await assert.rejects(exchangeGoogleCode("code", "verifier", "expected-nonce"), (error: unknown) => error instanceof ApiError && error.code === "GOOGLE_LOGIN_FAILED");
-    Object.assign(payload, previous);
+test("bootstrap accepts only Argon2id hashes with at least the configured cost", async () => {
+  const hash = await hashPassword("a strong password 123");
+  assert.equal(validPasswordHash(hash), true);
+  assert.equal(validPasswordHash(`  ${hash}
+`), true, "surrounding whitespace from an env file is tolerated");
+  const weaker = hash.replace("m=19456", "m=4096");
+  for (const value of ["a strong password 123", "", undefined, weaker, hash.replace("t=2", "t=1"), hash.replace("argon2id", "argon2i"), `${hash}$extra`]) {
+    assert.equal(validPasswordHash(value), false, String(value));
   }
-  mock.method(OAuth2Client.prototype, "verifyIdToken", async () => { throw new Error("bad signature"); });
-  await assert.rejects(exchangeGoogleCode("code", "verifier", "expected-nonce"), ApiError);
 });

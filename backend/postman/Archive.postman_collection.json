@@ -1,0 +1,1181 @@
+{
+  "info": {
+    "name": "KM ITS - Archive Workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local temporary database only. Requires a ready super-admin username/password and the ingestion secret. Exercises ingestion, public metadata, admin hide/unhide and sync logs. Drive credentials must be unset for the configured open failure assertion. Use a fresh database for each run."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!/^http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?$/.test(pm.environment.get(\"baseUrl\") || \"\")) throw new Error(\"Local test server required\");"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"JSON envelope\", () => { const b = pm.response.json(); pm.expect(b.success).to.eql(pm.response.code < 400); pm.expect(b.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(Date.parse(b.meta.timestamp)).not.to.be.NaN; pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(b.meta.requestId); });",
+          "pm.test(\"No caching\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Login archive operator",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/login",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const d = pm.response.json().data; const c = pm.response.headers.all().filter(h => h.key.toLowerCase() === \"set-cookie\").map(h => h.value).join(\"; \").match(/(?:__Host-)?kmits_session=[A-Za-z0-9_-]{43}/); pm.test(\"Session cookie exists\", () => pm.expect(c).not.to.eql(null)); if(c) pm.environment.set(\"sessionCookie\", c[0]); pm.environment.set(\"csrfToken\", d.csrfToken); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync a valid archive",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/archives",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"streamId\":\"http-test-stream\",\"deliveryId\":\"http-delivery-1\",\"scanSequence\":\"1\",\"metadataFileId\":\"http-metadata\",\"metadataDriveVersion\":\"1\",\"observation\":\"VALID\",\"sourceCheckedAt\":\"2026-01-01T00:00:00.000Z\",\"folderId\":\"http-folder\",\"metadata\":{\"schemaVersion\":1,\"driveFileId\":\"http-pdf\",\"title\":\"HTTP archive fixture\",\"description\":\"Temporary test document\",\"category\":\"Reports\",\"year\":2026,\"authors\":[\"Test ministry\"]},\"pdf\":{\"driveFileId\":\"http-pdf\",\"folderId\":\"http-folder\",\"mimeType\":\"application/pdf\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"publicReadable\":true,\"size\":100}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Applied\",()=>pm.expect(pm.response.json().data.outcome).to.eql(\"applied\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Duplicate delivery is idempotent",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/archives",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"streamId\":\"http-test-stream\",\"deliveryId\":\"http-delivery-1\",\"scanSequence\":\"1\",\"metadataFileId\":\"http-metadata\",\"metadataDriveVersion\":\"1\",\"observation\":\"VALID\",\"sourceCheckedAt\":\"2026-01-01T00:00:00.000Z\",\"folderId\":\"http-folder\",\"metadata\":{\"schemaVersion\":1,\"driveFileId\":\"http-pdf\",\"title\":\"HTTP archive fixture\",\"description\":\"Temporary test document\",\"category\":\"Reports\",\"year\":2026,\"authors\":[\"Test ministry\"]},\"pdf\":{\"driveFileId\":\"http-pdf\",\"folderId\":\"http-folder\",\"mimeType\":\"application/pdf\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"publicReadable\":true,\"size\":100}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Duplicate\",()=>pm.expect(pm.response.json().data.outcome).to.eql(\"duplicate\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public archive list",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "const d=pm.response.json().data; pm.test(\"Visible fixture\",()=>pm.expect(d.total).to.eql(1)); pm.environment.set(\"archiveId\",d.items[0].id); pm.test(\"Private source omitted\",()=>{pm.expect(d.items[0]).not.to.have.property(\"sourceFolderId\");pm.expect(d.items[0]).not.to.have.property(\"snapshot\");});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Archive filters and search",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?ministryId=http-ministry&category=reports&year=2026&q=fixture&sort=title",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Matches filters\",()=>pm.expect(pm.response.json().data.total).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Non-matching search is empty",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?q=no-such-document",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Empty\",()=>pm.expect(pm.response.json().data.total).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid sort is rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?sort=random",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_FILTER\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public archive detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives/{{archiveId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Title\",()=>pm.expect(pm.response.json().data.title).to.eql(\"HTTP archive fixture\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Missing Drive config fails closed",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives/{{archiveId}}/open",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(503));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"DRIVE_NOT_CONFIGURED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin archive detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/archives/{{archiveId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hide archive",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/archives/{{archiveId}}/unpublish",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Hidden\",()=>pm.expect(pm.response.json().data.manualHidden).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hidden detail is 404",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives/{{archiveId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hidden list is empty",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Empty\",()=>pm.expect(pm.response.json().data.total).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Restore archive visibility",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/archives/{{archiveId}}/publish",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Visible\",()=>pm.expect(pm.response.json().data.effectiveVisibility).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Restored public detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives/{{archiveId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Read sync logs",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/sync-logs?streamId=http-test-stream",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Recorded deliveries\",()=>pm.expect(pm.response.json().data.items.length).to.be.at.least(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "No public knowledge groups yet",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/knowledge-groups",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 0\", () => pm.expect(pm.response.json().data.total).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin sees the ministry without a group",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Unassigned\",()=>pm.expect(pm.response.json().data.unassignedMinistries).to.include(\"http-ministry\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Group creation requires CSRF",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"ministryId\":\"http-ministry\",\"name\":\"Kementerian Uji\",\"description\":\"Grup pengujian HTTP\",\"driveUrl\":\"https://drive.google.com/drive/folders/http-folder\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(403));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"CSRF_REJECTED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unregistered ministry is rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"ministryId\":\"unknown-ministry\",\"name\":\"Kementerian Uji\",\"description\":\"Grup pengujian HTTP\",\"driveUrl\":\"https://drive.google.com/drive/folders/http-folder\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_KNOWLEDGE_GROUP\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Non-Drive link is rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"ministryId\":\"http-ministry\",\"name\":\"Kementerian Uji\",\"description\":\"Grup pengujian HTTP\",\"driveUrl\":\"https://example.com/folder\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_KNOWLEDGE_GROUP\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create knowledge group",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"ministryId\":\"http-ministry\",\"name\":\"Kementerian Uji\",\"description\":\"Grup pengujian HTTP\",\"driveUrl\":\"https://drive.google.com/drive/folders/http-folder\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "const d=pm.response.json().data; pm.environment.set(\"groupId\",d.id); pm.environment.set(\"groupRevision\",d.revision);",
+              "pm.test(\"Slug from name\",()=>pm.expect(pm.response.json().data.slug).to.eql(\"kementerian-uji\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "One group per ministry",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"ministryId\":\"http-ministry\",\"name\":\"Kementerian Uji\",\"description\":\"Grup pengujian HTTP\",\"driveUrl\":\"https://drive.google.com/drive/folders/http-folder\",\"slug\":\"lain\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"KNOWLEDGE_GROUP_EXISTS\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public group list counts documents",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/knowledge-groups",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 1\", () => pm.expect(pm.response.json().data.total).to.eql(1));",
+              "pm.test(\"Document count\",()=>pm.expect(pm.response.json().data.items[0].documentCount).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public group detail by slug",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/knowledge-groups/kementerian-uji",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Drive link\",()=>pm.expect(pm.response.json().data.driveUrl).to.include(\"drive.google.com\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edit with old revision",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups/{{groupId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":99,\"name\":\"Lost update\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"KNOWLEDGE_GROUP_CHANGED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hide knowledge group",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups/{{groupId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":{{groupRevision}},\"hidden\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "const d=pm.response.json().data; pm.environment.set(\"groupId\",d.id); pm.environment.set(\"groupRevision\",d.revision);",
+              "pm.test(\"Hidden\",()=>pm.expect(pm.response.json().data.hidden).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hidden group detail is 404",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/knowledge-groups/kementerian-uji",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"KNOWLEDGE_GROUP_NOT_FOUND\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete knowledge group",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups/{{groupId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Deleted\",()=>pm.expect(pm.response.json().data.deleted).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deleted group is gone",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/knowledge-groups",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 0\", () => pm.expect(pm.response.json().data.total).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Archive documents stay after deletion",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/archives?ministryId=http-ministry",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 1\", () => pm.expect(pm.response.json().data.total).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout owner",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/logout",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cookie cleared\",()=>pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"Max-Age=0\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logged out session rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/auth/me",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

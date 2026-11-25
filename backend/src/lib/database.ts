@@ -1,5 +1,6 @@
 import { MongoClient } from "mongodb";
 import { ApiError } from "./http.ts";
+import { setting } from "./config.ts";
 
 const databaseGlobal = globalThis as typeof globalThis & {
   kmitsMongoConnection?: Promise<MongoClient>;
@@ -8,7 +9,7 @@ const databaseGlobal = globalThis as typeof globalThis & {
 // A shared pool per Node.js process, including development reloads. No connection at import/build time.
 export async function getMongoClient() {
   const uri = process.env.MONGODB_URI?.trim();
-  const databaseName = process.env.MONGODB_DATABASE?.trim();
+  const databaseName = setting("MONGODB_DATABASE")?.trim();
   if (!uri || !databaseName) {
     throw new ApiError(503, "DATABASE_NOT_CONFIGURED", "MongoDB configuration is required.");
   }
@@ -28,7 +29,7 @@ export async function getMongoClient() {
 }
 
 export async function getDatabase() {
-  return (await getMongoClient()).db(process.env.MONGODB_DATABASE!.trim());
+  return (await getMongoClient()).db(setting("MONGODB_DATABASE")!.trim());
 }
 
 export async function pingDatabase(): Promise<void> {

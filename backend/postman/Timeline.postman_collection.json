@@ -1,0 +1,758 @@
+{
+  "info": {
+    "name": "KM ITS - Timeline Workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local temporary database only. Requires a ready super-admin, the ingestion secret and calendarId equal to EVENT_CALENDAR_ID. Exercises batch sync ordering, public window/status filters, admin hiding and sync logs. Use a fresh database for each run."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!/^http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?$/.test(pm.environment.get(\"baseUrl\") || \"\")) throw new Error(\"Local test server required\");"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"JSON envelope\", () => { const b = pm.response.json(); pm.expect(b.success).to.eql(pm.response.code < 400); pm.expect(b.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(Date.parse(b.meta.timestamp)).not.to.be.NaN; pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(b.meta.requestId); });",
+          "pm.test(\"No caching\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Login timeline operator",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/login",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const d = pm.response.json().data; const c = pm.response.headers.all().filter(h => h.key.toLowerCase() === \"set-cookie\").map(h => h.value).join(\"; \").match(/(?:__Host-)?kmits_session=[A-Za-z0-9_-]{43}/); pm.test(\"Session cookie exists\", () => pm.expect(c).not.to.eql(null)); if(c) pm.environment.set(\"sessionCookie\", c[0]); pm.environment.set(\"csrfToken\", d.csrfToken); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync event batch",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/events",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"calendarId\":\"{{calendarId}}\",\"events\":[{\"eventId\":\"tl-past\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"Timeline tl-past\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":false,\"startAt\":\"2020-01-01T00:00:00.000Z\",\"endAt\":\"2020-01-02T00:00:00.000Z\"},{\"eventId\":\"tl-future\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"Timeline tl-future\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":true,\"startAt\":\"2099-01-01T00:00:00.000Z\",\"endAt\":\"2099-01-02T00:00:00.000Z\"},{\"eventId\":\"tl-cancelled\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"cancelled\"}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"applied\",\"applied\",\"applied\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Retried batch is unchanged",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/events",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"calendarId\":\"{{calendarId}}\",\"events\":[{\"eventId\":\"tl-past\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"Timeline tl-past\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":false,\"startAt\":\"2020-01-01T00:00:00.000Z\",\"endAt\":\"2020-01-02T00:00:00.000Z\"},{\"eventId\":\"tl-future\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"Timeline tl-future\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":true,\"startAt\":\"2099-01-01T00:00:00.000Z\",\"endAt\":\"2099-01-02T00:00:00.000Z\"},{\"eventId\":\"tl-cancelled\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"cancelled\"}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"unchanged\",\"unchanged\",\"unchanged\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Older update is stale",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/events",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"calendarId\":\"{{calendarId}}\",\"events\":[{\"eventId\":\"tl-future\",\"updated\":\"2025-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"Older\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":true,\"startAt\":\"2099-01-01T00:00:00.000Z\",\"endAt\":\"2099-01-02T00:00:00.000Z\"}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"stale\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid item does not block others",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/events",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"calendarId\":\"{{calendarId}}\",\"events\":[{\"eventId\":\"tl-invalid\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":false,\"startAt\":\"2020-01-01T00:00:00.000Z\",\"endAt\":\"2020-01-02T00:00:00.000Z\"}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"invalid\"]));",
+              "pm.test(\"Reason\", () => pm.expect(pm.response.json().data.results[0].reason).to.eql(\"INVALID_TITLE\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unregistered calendar is rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/events",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"calendarId\":\"other-calendar\",\"events\":[{\"eventId\":\"tl-past\",\"updated\":\"2026-01-01T00:00:00.000Z\",\"status\":\"confirmed\",\"title\":\"Timeline tl-past\",\"description\":\"Fixture\",\"location\":\"ITS\",\"organization\":\"Test ministry\",\"allDay\":false,\"startAt\":\"2020-01-01T00:00:00.000Z\",\"endAt\":\"2020-01-02T00:00:00.000Z\"}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(422));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_EVENT_BATCH\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public event list",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/events",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 2\", () => pm.expect(pm.response.json().data.total).to.eql(2));",
+              "const d = pm.response.json().data; pm.test(\"Derived status\", () => pm.expect(d.items.map(e => e.status)).to.eql([\"FINISHED\", \"UPCOMING\"])); pm.environment.set(\"eventId\", d.items[1].id); pm.test(\"Source identity omitted\", () => pm.expect(d.items[0]).not.to.have.property(\"calendarId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Status filter",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/events?status=UPCOMING",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 1\", () => pm.expect(pm.response.json().data.total).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Window filter",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/events?from=2098-12-31T00:00:00Z&to=2099-01-03T00:00:00Z",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 1\", () => pm.expect(pm.response.json().data.total).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid status filter",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/events?status=LIVE",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_STATUS\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public event detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/events/{{eventId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Title\", () => pm.expect(pm.response.json().data.title).to.eql(\"Timeline tl-future\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin event list",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/events",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 3\", () => pm.expect(pm.response.json().data.total).to.eql(3));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin event detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/events/{{eventId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Latest sync\", () => pm.expect(pm.response.json().data.lastSync.outcome).to.eql(\"stale\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hiding requires CSRF",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/events/{{eventId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"hidden\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(403));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"CSRF_REJECTED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hide event",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/events/{{eventId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"hidden\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Hidden\", () => pm.expect(pm.response.json().data.effectiveVisibility).to.eql(false));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hidden event is 404",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/events/{{eventId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Show event",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/events/{{eventId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"hidden\":false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Visible\", () => pm.expect(pm.response.json().data.effectiveVisibility).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Event sync logs",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/sync-logs?source=events",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Logged\", () => pm.expect(pm.response.json().data.total).to.be.at.least(8));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout owner",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/logout",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cookie cleared\",()=>pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"Max-Age=0\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logged out session rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/auth/me",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

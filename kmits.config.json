@@ -1,0 +1,33 @@
+{
+  "$comment": "Non-secret KM ITS settings. Secrets (MONGODB_URI, password hash, ingestion secret hash, Drive private key and API key) stay in the environment. A non-empty environment variable overrides a value here. Empty strings and null mean unset. See backend/README.md#configuration.",
+  "app": {
+    "origin": "http://localhost:3000",
+    "maxJsonBytes": null
+  },
+  "database": {
+    "name": "kmits"
+  },
+  "auth": {
+    "bootstrapSuperAdminUsername": ""
+  },
+  "archive": {
+    "$comment": "One entry per ministry Drive folder: { \"streamId\": \"...\", \"ministryId\": \"...\", \"folderId\": \"...\" }. Never rename an existing streamId.",
+    "sources": [],
+    "driveServiceAccountEmail": "kmits-drive-reader@kmits-backend-p6emhy.iam.gserviceaccount.com"
+  },
+  "timeline": {
+    "calendarId": "",
+    "syncMaxItems": null,
+    "descriptionMaxChars": null,
+    "pageDefaultLimit": null,
+    "pageMaxLimit": null
+  },
+  "articles": {
+    "formId": "",
+    "syncMaxItems": null,
+    "summaryMaxChars": null,
+    "bodyMaxChars": null,
+    "pageDefaultLimit": null,
+    "pageMaxLimit": null
+  }
+}

@@ -27,3 +27,5 @@ backend/postman/*.json
 **/*.webp
 **/*.woff
 **/*.woff2
+# Local Apps Script properties hold the ingestion secret.
+**/*.local.json

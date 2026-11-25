@@ -29,6 +29,27 @@
   initial-value: 0px;
 }
 
+/* In-page anchors (e.g. #features) scroll smoothly unless the user opts out. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Entrance for lists: items fade up one after another (set animation-delay inline). */
+@media (prefers-reduced-motion: no-preference) {
+  .kn-rise {
+    animation: kn-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes kn-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #2c2c30;

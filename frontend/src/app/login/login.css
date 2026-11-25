@@ -1,0 +1,12 @@
+/* Slow settle on the photo, so the page feels alive without distracting. */
+@media (prefers-reduced-motion: no-preference) {
+  .ln-photo {
+    animation: ln-settle 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes ln-settle {
+  from {
+    transform: scale(1.06);
+  }
+}

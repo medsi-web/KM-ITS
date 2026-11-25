@@ -1,39 +1,61 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import Navbar from "./(portal)/_components/Navbar";
-import "./(portal)/_components/portal.css";
 
 export const metadata: Metadata = {
   title: "404 - Halaman Tidak Ditemukan | Portal KM ITS",
 };
 
+const button =
+  "flex h-11 items-center gap-2 rounded-lg px-5 text-base shadow-[0_1px_1px_rgba(0,0,0,0.05)]";
+
 export default function NotFound() {
   return (
-    <>
-      <Navbar />
-      <main className="flex flex-1 items-center justify-center bg-white px-6 pt-16 pb-12">
-        <div className="flex max-w-xl flex-col items-center text-center">
-          <p className="whitespace-nowrap text-6xl font-bold leading-none text-navy sm:text-7xl md:text-7xl">
-            Error 404
-          </p>
-          <h1 className="mt-6 text-3xl font-bold text-black md:text-4xl">
-            Halaman Tidak Ditemukan
-          </h1>
-          <p className="mt-4 text-sm text-ink md:text-base">
-            Alamat yang kamu tuju tidak tersedia atau sudah dipindahkan. Kembali
-            ke beranda untuk melanjutkan.
-          </p>
-          <Link
-            href="/"
-            className="mt-8 inline-flex items-center gap-2 rounded-[5px] bg-navy px-5 py-3 text-sm font-semibold text-white md:text-base"
-          >
+    <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-ink px-6 py-24 text-center text-white">
+      <Image
+        src="/not-found/404.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+        style={{ objectPosition: "50% 62%" }}
+      />
+      <div aria-hidden className="absolute inset-0 bg-[rgba(44,44,48,0.36)]" />
+      <div aria-hidden className="absolute inset-0 bg-black/[0.41]" />
+
+      <div className="relative flex flex-col items-center">
+        <h1 className="text-[72px] leading-[104px] font-normal tracking-[-0.025em] md:text-[96px]">
+          404
+        </h1>
+        <h2 className="mt-2 text-base leading-6 font-normal">
+          Halaman Tidak Ditemukan
+        </h2>
+        <p className="mt-3 max-w-[496px] text-base leading-[26px]">
+          Maaf, halaman atau tautan yang kamu tuju tidak tersedia, telah
+          dipindahkan, atau alamat URL yang dimasukkan salah. Silakan periksa
+          kembali tautan Anda.
+        </p>
+        <div className="mt-[59px] flex flex-wrap items-center justify-center gap-[14px]">
+          <Link href="/" className={`${button} bg-white text-[#1e2229]`}>
+            <span className="relative h-[13.5px] w-[12px]">
+              <Image src="/not-found/icon-home.svg" alt="" fill sizes="12px" />
+            </span>
             Kembali ke Beranda
-            <Image src="/portal/icon-chevron.svg" alt="" width={5} height={8} />
+          </Link>
+          <Link href="/knowledge" className={`${button} bg-navy text-white`}>
+            <span className="relative size-[15px]">
+              <Image
+                src="/not-found/icon-knowledge.svg"
+                alt=""
+                fill
+                sizes="15px"
+              />
+            </span>
+            Jelajahi Knowledge
           </Link>
         </div>
-      </main>
-      <footer aria-hidden className="h-12 rounded-t-[10px] bg-navy md:h-16" />
-    </>
+      </div>
+    </main>
   );
 }

@@ -1,0 +1,897 @@
+{
+  "info": {
+    "name": "KM ITS - Articles Workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local temporary database only. Requires a ready super-admin, the ingestion secret and formId equal to ARTICLE_FORM_ID. Exercises unpublished ingestion, revision-checked publish, draft editing, source updates and unpublish. Use a fresh database for each run."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!/^http:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?$/.test(pm.environment.get(\"baseUrl\") || \"\")) throw new Error(\"Local test server required\");"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"JSON envelope\", () => { const b = pm.response.json(); pm.expect(b.success).to.eql(pm.response.code < 400); pm.expect(b.meta.requestId).to.match(/^[0-9a-f-]{36}$/); pm.expect(Date.parse(b.meta.timestamp)).not.to.be.NaN; pm.expect(pm.response.headers.get(\"X-Request-Id\")).to.eql(b.meta.requestId); });",
+          "pm.test(\"No caching\", () => pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\"));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Login article reviewer",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/login",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const d = pm.response.json().data; const c = pm.response.headers.all().filter(h => h.key.toLowerCase() === \"set-cookie\").map(h => h.value).join(\"; \").match(/(?:__Host-)?kmits_session=[A-Za-z0-9_-]{43}/); pm.test(\"Session cookie exists\", () => pm.expect(c).not.to.eql(null)); if(c) pm.environment.set(\"sessionCookie\", c[0]); pm.environment.set(\"csrfToken\", d.csrfToken); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync submission",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/articles",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"formId\":\"{{formId}}\",\"submissions\":[{\"responseId\":\"http-response\",\"submittedAt\":\"2026-01-01T00:00:00.000Z\",\"submitterEmail\":\"contributor@example.com\",\"article\":{\"schemaVersion\":1,\"title\":\"First title\",\"summary\":\"Fixture summary\",\"category\":\"News\",\"ministry\":\"Test ministry\",\"authors\":[\"Contributor\"],\"coverImage\":{\"driveFileId\":\"cover-image-id\",\"alt\":\"Cover\"},\"body\":\"## Fixture\\n\\nArticle body.\"}}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"applied\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Retried submission is unchanged",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/articles",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"formId\":\"{{formId}}\",\"submissions\":[{\"responseId\":\"http-response\",\"submittedAt\":\"2026-01-01T00:00:00.000Z\",\"submitterEmail\":\"contributor@example.com\",\"article\":{\"schemaVersion\":1,\"title\":\"First title\",\"summary\":\"Fixture summary\",\"category\":\"News\",\"ministry\":\"Test ministry\",\"authors\":[\"Contributor\"],\"coverImage\":{\"driveFileId\":\"cover-image-id\",\"alt\":\"Cover\"},\"body\":\"## Fixture\\n\\nArticle body.\"}}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"unchanged\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unregistered form is rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/articles",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"formId\":\"other-form\",\"submissions\":[{\"responseId\":\"http-response\",\"submittedAt\":\"2026-01-01T00:00:00.000Z\",\"submitterEmail\":\"contributor@example.com\",\"article\":{\"schemaVersion\":1,\"title\":\"x\",\"summary\":\"Fixture summary\",\"category\":\"News\",\"ministry\":\"Test ministry\",\"authors\":[\"Contributor\"],\"coverImage\":{\"driveFileId\":\"cover-image-id\",\"alt\":\"Cover\"},\"body\":\"## Fixture\\n\\nArticle body.\"}}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(422));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_ARTICLE_BATCH\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Submission is not public",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/articles",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 0\", () => pm.expect(pm.response.json().data.total).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Review queue",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/articles?published=false",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 1\", () => pm.expect(pm.response.json().data.total).to.eql(1));",
+              "const d = pm.response.json().data.items[0]; pm.environment.set(\"articleId\", d.id); pm.environment.set(\"articleRevision\", String(d.revision));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin article detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Draft equals source\", () => { const d = pm.response.json().data; pm.expect(d.draft.content.title).to.eql(d.source.title); pm.expect(d.submitterEmail).to.eql(\"contributor@example.com\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stale revision cannot publish",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}/publish",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":99}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"ARTICLE_CHANGED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish reviewed revision",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}/publish",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":{{articleRevision}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Published\", () => pm.expect(pm.response.json().data.isPublished).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public article list",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/articles",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 1\", () => pm.expect(pm.response.json().data.total).to.eql(1));",
+              "pm.test(\"List omits body and email\", () => { const a = pm.response.json().data.items[0]; pm.expect(a).not.to.have.property(\"body\"); pm.expect(a).not.to.have.property(\"submitterEmail\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public article detail",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/articles/{{articleId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Title\", () => pm.expect(pm.response.json().data.title).to.eql(\"First title\"));",
+              "pm.test(\"Body\", () => pm.expect(pm.response.json().data.body).to.include(\"Article body\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contributor update",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/internal/sync/articles",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ingestionSecret}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"protocolVersion\":1,\"formId\":\"{{formId}}\",\"submissions\":[{\"responseId\":\"http-response\",\"submittedAt\":\"2026-01-02T00:00:00.000Z\",\"submitterEmail\":\"contributor@example.com\",\"article\":{\"schemaVersion\":1,\"title\":\"Contributor update\",\"summary\":\"Fixture summary\",\"category\":\"News\",\"ministry\":\"Test ministry\",\"authors\":[\"Contributor\"],\"coverImage\":{\"driveFileId\":\"cover-image-id\",\"alt\":\"Cover\"},\"body\":\"## Fixture\\n\\nArticle body.\"}}]}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Outcomes\", () => pm.expect(pm.response.json().data.results.map(r => r.outcome)).to.eql([\"applied\"]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public copy unchanged",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/articles/{{articleId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Title\", () => pm.expect(pm.response.json().data.title).to.eql(\"First title\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Draft follows source",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.environment.set(\"articleRevision\", String(pm.response.json().data.revision));",
+              "pm.test(\"Pending publish\", () => { const d = pm.response.json().data; pm.expect(d.draft.content.title).to.eql(\"Contributor update\"); pm.expect(d.hasUnpublishedChanges).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edit draft",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":{{articleRevision}},\"title\":\"Admin edited title\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.environment.set(\"articleRevision\", String(pm.response.json().data.revision));",
+              "pm.test(\"Edited\", () => pm.expect(pm.response.json().data.draftEdited).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edit with old revision",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":1,\"title\":\"Lost update\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Error code\", () => pm.expect(pm.response.json().error.code).to.eql(\"ARTICLE_CHANGED\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish edited draft",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}/publish",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"revision\":{{articleRevision}}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public shows edited copy",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/articles/{{articleId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Title\", () => pm.expect(pm.response.json().data.title).to.eql(\"Admin edited title\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unpublish article",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/articles/{{articleId}}/unpublish",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Hidden\", () => pm.expect(pm.response.json().data.isPublished).to.eql(false));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unpublished article is 404",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/articles/{{articleId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Article sync logs",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/sync-logs?source=articles&responseId=http-response",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Total 3\", () => pm.expect(pm.response.json().data.total).to.eql(3));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout owner",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/logout",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{baseUrl}}"
+          },
+          {
+            "key": "X-CSRF-Token",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cookie cleared\",()=>pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.include(\"Max-Age=0\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logged out session rejected",
+      "protocolProfileBehavior": {
+        "followRedirects": false,
+        "disableCookies": true
+      },
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/auth/me",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{sessionCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Expected status\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
