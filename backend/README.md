@@ -180,8 +180,11 @@ published content is exactly what the admin reviewed.
 Settings come from two places:
 
 - **`kmits.config.json`** at the repository root holds every non-secret setting.
-  It is committed. Another file can be selected with `KMITS_CONFIG_PATH`, for
-  example `KMITS_CONFIG_PATH=../kmits.config.staging.json` on a staging host.
+  It is committed. When a git-ignored `kmits.config.local.json` exists next to it,
+  that file is read instead; keep real values there when they must not reach the
+  public repository (for example Drive folder IDs of link-shared folders). Another
+  file can be selected with `KMITS_CONFIG_PATH`, for example
+  `KMITS_CONFIG_PATH=../kmits.config.staging.json` on a staging host.
 - **Environment** (`frontend/.env.local` locally, the host's secret store on a
   server) holds secrets only. `frontend/.env.example` lists them.
 

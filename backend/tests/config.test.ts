@@ -106,3 +106,21 @@ test("the committed repository config file is valid", () => {
   clearConfigCache();
   assert.equal(setting("MONGODB_DATABASE"), "kmits");
 });
+
+test("a git-ignored kmits.config.local.json is preferred over kmits.config.json", () => {
+  delete process.env.KMITS_CONFIG_PATH;
+  const directory = mkdtempSync(path.join(tmpdir(), "kmits-local-"));
+  writeFileSync(path.join(directory, "kmits.config.json"), JSON.stringify({ app: { origin: "https://shared.example" } }));
+  const cwd = process.cwd();
+  try {
+    process.chdir(directory);
+    clearConfigCache();
+    assert.equal(setting("APP_ORIGIN"), "https://shared.example");
+    writeFileSync(path.join(directory, "kmits.config.local.json"), JSON.stringify({ app: { origin: "https://local.example" } }));
+    clearConfigCache();
+    assert.equal(configFilePath(), path.join(directory, "kmits.config.local.json"));
+    assert.equal(setting("APP_ORIGIN"), "https://local.example");
+  } finally {
+    process.chdir(cwd);
+  }
+});

@@ -33,14 +33,20 @@ function invalidSetting(name: string, rule: string): never {
   throw new ApiError(503, "CONFIGURATION_INVALID", `${name} must be ${rule}.`);
 }
 
+// Git-ignored copy for values that must not reach the public repository
+// (for example Drive folder IDs of link-shared folders). It wins when present.
+export const LOCAL_CONFIG_FILE_NAME = "kmits.config.local.json";
+
 // Next.js runs from frontend/ and the scripts from backend/, so the file is
 // looked up in the working directory and its parent.
 export function configFilePath(): string | null {
   const explicit = process.env.KMITS_CONFIG_PATH?.trim();
   if (explicit) return path.resolve(explicit);
   for (const directory of [process.cwd(), path.dirname(process.cwd())]) {
-    const candidate = path.join(directory, CONFIG_FILE_NAME);
-    if (existsSync(candidate)) return candidate;
+    for (const name of [LOCAL_CONFIG_FILE_NAME, CONFIG_FILE_NAME]) {
+      const candidate = path.join(directory, name);
+      if (existsSync(candidate)) return candidate;
+    }
   }
   return null;
 }

@@ -59,3 +59,6 @@ next-env.d.ts
 
 # Local Apps Script Script Properties (contain the ingestion secret)
 backend/apps-script/*.local.json
+
+# Real local settings (Drive folder IDs of link-shared folders stay off the public repo)
+kmits.config.local.json
