@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import DocumentRow from "../_components/DocumentRow";
-import { getGroup } from "../_data/archives";
+import { getDocuments, getGroup } from "../_data/archives";
 import { formatLongDate } from "../_data/groups";
 
 export async function generateMetadata({
@@ -31,11 +31,8 @@ async function Group({ params }: Pick<PageProps<"/knowledge/[slug]">, "params">)
   const group = await getGroup((await params).slug);
   if (!group) notFound();
 
-  const title = group.name;
-  const categories = [...new Set(group.documents.map((d) => d.category).filter(Boolean))];
-  const description = `${group.documentCount} dokumen arsip${
-    categories.length ? ` dalam kategori ${categories.join(", ")}` : ""
-  }.`;
+  const documents = await getDocuments(group.documentsUrl);
+  const title = group.title || group.name;
 
   return (
     <div className="grid gap-y-10 px-5 pb-4 md:pl-[5.7%] md:pr-[8.5%] lg:grid-cols-[minmax(0,1fr)_449px] lg:gap-x-[117px]">
@@ -48,7 +45,7 @@ async function Group({ params }: Pick<PageProps<"/knowledge/[slug]">, "params">)
           <Link href="/knowledge" className="font-bold text-[#5b6270]">
             KNOWLEDGE
           </Link>{" "}
-          / {title}
+          / {group.name}
         </nav>
         <p className="-mt-px text-[15px] uppercase leading-[36px] tracking-[1.2px] text-azure">
           Knowledge Group
@@ -57,11 +54,11 @@ async function Group({ params }: Pick<PageProps<"/knowledge/[slug]">, "params">)
           {title}
         </h1>
         <p className="mt-[5px] max-w-[624px] text-pretty text-[15.2px] leading-[21.2px] text-[#525252]">
-          {description}
+          {group.description}
         </p>
         <p className="mt-1 flex items-center gap-[6px] text-[15.2px] font-bold leading-[36px] text-[#737373]">
           <Image src="/knowledge/clock-detail.svg" alt="" width={12} height={12} />
-          Diperbarui {formatLongDate(group.updatedAt)}
+          Diperbarui {formatLongDate(group.lastDocumentAt ?? group.updatedAt)}
         </p>
 
         <section
@@ -83,12 +80,17 @@ async function Group({ params }: Pick<PageProps<"/knowledge/[slug]">, "params">)
             </span>
           </div>
           <ul>
-            {group.documents.map((doc, i) => (
+            {documents.map((doc, i) => (
               <DocumentRow key={doc.id} doc={doc} first={i === 0} index={i} />
             ))}
           </ul>
+          {documents.length === 0 && (
+            <p className="py-6 text-center text-[13px] text-[#737373]">
+              Belum ada dokumen di group ini.
+            </p>
+          )}
           <p className="border-t border-[#e5e5e5] pt-[13px] text-right text-base leading-6 text-[#737373]">
-            Menampilkan {group.documents.length} dokumen terverifikasi
+            Menampilkan {documents.length} dokumen terverifikasi
           </p>
         </section>
       </div>
@@ -106,6 +108,14 @@ async function Group({ params }: Pick<PageProps<"/knowledge/[slug]">, "params">)
             Semua dokumen group ini dikelola di Google Drive resmi KM ITS. Pilih
             dokumen pada daftar untuk membuka salinan aslinya di tab baru.
           </p>
+          <a
+            href={group.driveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-auto flex h-11 items-center justify-center rounded-lg bg-navy text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+          >
+            Buka folder Google Drive
+          </a>
         </div>
 
         <div className="mt-[22px] rounded-2xl border border-[#e5e5e5] bg-white p-[25px] shadow-[0_1px_1px_rgba(0,0,0,0.05)]">

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { cache } from "react";
 import { articlesDetail, articlesList } from "@kmits/backend";
 
@@ -40,6 +41,8 @@ const toArticle = ({ coverImage, ...rest }: ApiArticle): NewsArticle => ({
  * Client Component.
  */
 export const getArticles = cache(async () => {
+  // The handler creates a random request id, so it must not run while prerendering.
+  await connection();
   const articles: NewsArticle[] = [];
   // shortcut: the API caps offset at 10000, so at most ~10k articles load; add
   // server-side search and categories before the archive can grow past that.
@@ -57,6 +60,7 @@ export const getArticles = cache(async () => {
 
 /** One article with its Markdown body; `undefined` when it does not exist or is unpublished. */
 export const getArticle = cache(async (id: string) => {
+  await connection();
   const response = await articlesDetail(
     new Request(`http://localhost/api/articles/${encodeURIComponent(id)}`),
   );

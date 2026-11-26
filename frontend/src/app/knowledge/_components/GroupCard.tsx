@@ -40,7 +40,7 @@ export default function GroupCard({ group }: { group: KnowledgeGroup }) {
           </Link>
         </h3>
         <p className="mt-2 line-clamp-2 text-base leading-[26px] text-[#525252]">
-          {group.summary}
+          {group.description}
         </p>
       </div>
 
@@ -48,7 +48,7 @@ export default function GroupCard({ group }: { group: KnowledgeGroup }) {
         <span className="flex items-center gap-1 text-[11px] text-[#737373] group-hover:text-[#525252]">
           <Image src="/knowledge/clock.svg" alt="" width={12} height={12} />
           <span className="pl-[0.5px]">
-            Diperbarui {formatShortDate(group.updatedAt)}
+            Diperbarui {formatShortDate(group.lastDocumentAt ?? group.updatedAt)}
           </span>
         </span>
         <div className="flex items-center justify-between pt-1">

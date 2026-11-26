@@ -4,12 +4,14 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-const field =
+export const field =
   "h-11 w-full rounded-lg border border-line bg-white px-4 text-[13px] font-medium text-[#1e2229] outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[#6b7280] hover:border-navy/60 focus:border-navy focus:shadow-[0_0_0_3px_rgba(36,63,129,0.15)]";
 
 // Messages for the backend error codes (see backend auth handlers); anything else is generic.
 const messages: Record<string, string> = {
-  INVALID_CREDENTIALS: "Nama akun atau kata sandi salah.",
+  INVALID_CREDENTIALS: "Username atau kata sandi salah.",
+  // Origin differs from APP_ORIGIN, e.g. 127.0.0.1 vs localhost.
+  CSRF_REJECTED: "Buka situs ini dari alamat resmi portal, lalu coba lagi.",
   // The backend answers 503 when MongoDB or APP_ORIGIN is not ready.
   UNAVAILABLE: "Layanan sedang tidak tersedia. Coba lagi nanti.",
 };
@@ -37,11 +39,12 @@ export default function LoginForm() {
           password: String(data.get("password")),
         }),
       });
+      const body = await res.json().catch(() => null);
       if (res.ok) {
-        router.replace("/");
+        // A temporary password blocks every admin route.
+        router.replace(body?.data?.account?.requirePasswordChange ? "/login/ganti-password" : "/");
         return;
       }
-      const body = await res.json().catch(() => null);
       setError(
         res.status === 503
           ? messages.UNAVAILABLE
@@ -57,7 +60,7 @@ export default function LoginForm() {
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
       <div className="kn-rise" style={rise(0)}>
         <label htmlFor="username" className="mb-1.5 block text-sm font-semibold text-[#1e2229]">
-          Email atau nama akun <span className="text-danger">*</span>
+          Username <span className="text-danger">*</span>
         </label>
         <input
           id="username"
@@ -67,7 +70,7 @@ export default function LoginForm() {
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
-          placeholder="contoh@its.ac.id atau nama_ormawa"
+          placeholder="Masukkan username"
           className={field}
         />
       </div>

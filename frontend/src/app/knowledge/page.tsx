@@ -4,7 +4,7 @@ import EmptyState from "../_components/EmptyState";
 import GroupCard from "./_components/GroupCard";
 import SearchBar from "./_components/SearchBar";
 import { getGroups } from "./_data/archives";
-import { parseSort, searchGroups } from "./_data/groups";
+import { parseSort } from "./_data/groups";
 
 export const metadata: Metadata = {
   title: "KM ITS Knowledge | Portal KM ITS",
@@ -43,8 +43,8 @@ async function Results({
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 100) : "";
   const sort = parseSort(typeof params.sort === "string" ? params.sort : undefined);
-  const groups = await getGroups().catch(() => null);
-  if (!groups) {
+  const result = await getGroups(query, sort).catch(() => null);
+  if (!result) {
     return (
       <EmptyState
         className="mt-[79px]"
@@ -56,7 +56,7 @@ async function Results({
       />
     );
   }
-  const found = searchGroups(groups, query, sort);
+  const { items: found, total } = result;
 
   return (
     <>
@@ -64,12 +64,12 @@ async function Results({
         <SearchBar
           query={query}
           sort={sort}
-          resultCount={found.length}
-          total={groups.length}
+          resultCount={total}
+          total={total}
         />
       </div>
 
-      {groups.length === 0 ? (
+      {found.length === 0 && !query ? (
         <EmptyState
           className="mt-[79px]"
           icon="/knowledge/empty-book.svg"
