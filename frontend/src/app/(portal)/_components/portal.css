@@ -156,3 +156,15 @@
     transform: none;
   }
 }
+
+/* Scroll-in for the Features band: hidden until Reveal marks the layer as in view. */
+@media (prefers-reduced-motion: no-preference) {
+  .pf-reveal {
+    opacity: 0;
+  }
+
+  .pf-layer[data-inview] .pf-reveal {
+    opacity: 1;
+    animation: kn-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) backwards;
+  }
+}

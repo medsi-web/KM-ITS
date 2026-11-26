@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import { Layer } from "./Canvas";
+import Reveal from "./Reveal";
 import {
   FEATURES_H,
   HERO_H,
@@ -12,6 +13,9 @@ import {
 } from "@/app/_components/geometry";
 
 const rect = rectIn(FEATURES_H);
+
+/** Delay (ms) of an item's scroll-in, read by `.pf-reveal` in portal.css. */
+const delay = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
 const centered = (size: number, weight: number): CSSProperties => ({
   margin: 0,
@@ -89,11 +93,13 @@ function Card({
   href,
   label,
   origin,
+  delay: ms,
   shape,
   children,
 }: {
   href: string;
   label: string;
+  delay: number;
   /** Centre of the card in frame %, so the pop scales around the card itself. */
   origin: string;
   shape: TiltedShape;
@@ -103,8 +109,8 @@ function Card({
     <Link
       href={href}
       aria-label={label}
-      className="pf-card"
-      style={{ "--card-origin": origin } as CSSProperties}
+      className="pf-card pf-reveal"
+      style={{ "--card-origin": origin, ...delay(ms) } as CSSProperties}
     >
       <Tilted {...shape}>
         <span className="pf-card-hit" />
@@ -117,6 +123,11 @@ function Card({
 export default function Features() {
   return (
     <Layer id="features" top={HERO_H} height={FEATURES_H}>
+      <Reveal />
+      {/* Without JavaScript nothing marks the layer as in view, so show everything. */}
+      <noscript>
+        <style>{".pf-reveal{opacity:1!important}"}</style>
+      </noscript>
       {/* Batik band behind the cards */}
       <div className="pf-abs" style={inset(43.88, 37.32, 23.73, 37.44)}>
         <Image src="/portal/batik-filled-1.svg" alt="" fill sizes="30vw" />
@@ -158,8 +169,9 @@ export default function Features() {
 
       {/* Heading */}
       <p
-        className="pf-abs"
+        className="pf-abs pf-reveal"
         style={{
+          ...delay(0),
           ...rect(439.3, 97.4, 83.9, 14.5),
           fontSize: px(12.433),
           fontWeight: 600,
@@ -171,8 +183,9 @@ export default function Features() {
         Portal KM ITS
       </p>
       <h2
-        className="pf-heading"
+        className="pf-heading pf-reveal"
         style={{
+          ...delay(80),
           ...rect(240.4, 111.9, 481.8, 32.1),
           fontSize: px(33.156),
           color: "var(--color-navy)",
@@ -188,6 +201,7 @@ export default function Features() {
         href="/knowledge"
         label="KM ITS Knowledge"
         origin="32.17% 53.74%"
+        delay={180}
         shape={{
           box: inset(36.07, 59.65, 28.6, 23.99),
           angle: -4.74,
@@ -234,6 +248,7 @@ export default function Features() {
         href="/timeline"
         label="Integrated Timeline KM ITS"
         origin="50.03% 52.5%"
+        delay={270}
         shape={{
           box: inset(35.96, 42.49, 30.93, 42.55),
           angle: 0,
@@ -288,6 +303,7 @@ export default function Features() {
         href="/news"
         label="KM ITS News"
         origin="67.95% 54.04%"
+        delay={360}
         shape={{
           box: inset(36.37, 23.88, 28.3, 59.77),
           angle: 4.74,
@@ -333,13 +349,14 @@ export default function Features() {
 
       {/* CTA label */}
       <div
-        className="pf-button"
-        style={rect(380.2, 388.54, 202.044, 30.048)}
+        className="pf-button pf-reveal"
+        style={{ ...delay(450), ...rect(380.2, 388.54, 202.044, 30.048) }}
         aria-hidden
       />
       <p
-        className="pf-abs"
+        className="pf-abs pf-reveal"
         style={{
+          ...delay(450),
           ...inset(77.81, 43.08, 19.34, 43.14),
           margin: 0,
           textAlign: "right",

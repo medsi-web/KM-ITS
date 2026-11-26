@@ -75,14 +75,18 @@ export default function Hero() {
         </div>
       ))}
       <div
-        className="pf-abs"
+        className="pf-abs kn-rise"
         style={{
           ...rect(653.79, 175.1, 191.683, 191.683),
           background: "#fff",
           borderRadius: "50%",
+          animationDelay: "250ms",
         }}
       />
-      <div className="pf-abs" style={rect(669.33, 190.65, 160.599, 160.599)}>
+      <div
+        className="pf-abs kn-rise"
+        style={{ ...rect(669.33, 190.65, 160.599, 160.599), animationDelay: "320ms" }}
+      >
         <Image src="/portal/emblem-its.svg" alt="Lambang ITS" fill />
       </div>
 
@@ -98,20 +102,22 @@ export default function Hero() {
 
       {/* Copy */}
       <p
-        className="pf-abs"
+        className="pf-abs kn-rise"
         style={{
           ...rect(118.1, 153.4, 112.9, 14.5),
           fontSize: px(12.433),
           fontWeight: 600,
           color: "var(--color-navy)",
           whiteSpace: "nowrap",
+          animationDelay: "80ms",
         }}
       >
         Selamat Datang di
       </p>
       <h1
-        className="pf-heading"
+        className="pf-heading kn-rise"
         style={{
+          animationDelay: "150ms",
           left: `${(118.1 / 963.3637) * 100}%`,
           top: `${(167.9 / HERO_H) * 100}%`,
           fontSize: px(33.156),
@@ -126,8 +132,9 @@ export default function Hero() {
         ITS
       </h1>
       <p
-        className="pf-abs"
+        className="pf-abs kn-rise"
         style={{
+          animationDelay: "220ms",
           left: `${(118.1 / 963.3637) * 100}%`,
           top: `${(291.2 / HERO_H) * 100}%`,
           fontSize: px(12.433),
@@ -142,8 +149,9 @@ export default function Hero() {
 
       <ScrollLink
         href="#features"
-        className="pf-button pf-cta"
+        className="pf-button pf-cta kn-rise"
         style={{
+          animationDelay: "290ms",
           ...rect(117.05, 329.47, 112.937, 30.048),
           justifyContent: "flex-start",
           paddingLeft: px(9.35),
