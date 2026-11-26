@@ -17,8 +17,7 @@ export default function LoginPage() {
         style={{
           backgroundImage:
             "linear-gradient(196deg, #fefefe 44.6%, rgba(18, 123, 190, 0.6) 205.7%)",
-        }}
-      >
+        }}>
         <div className="w-full max-w-[400px]">
           <header className="kn-rise mb-9 text-center">
             <h1 className="text-[30px] font-bold leading-[38px] tracking-[-0.5px] text-navy">
@@ -36,8 +35,7 @@ export default function LoginPage() {
 
       <aside
         aria-hidden
-        className="relative hidden overflow-hidden bg-ink lg:block"
-      >
+        className="relative hidden overflow-hidden bg-ink lg:block">
         <Image
           src="/login/photo.png"
           alt=""
